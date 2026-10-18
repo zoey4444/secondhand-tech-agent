@@ -357,7 +357,7 @@ if "review_result" in st.session_state:
     if st.session_state.get("decision_change"):
         st.info(st.session_state["decision_change"])
     show_cart_scene(saved_case["category"], saved_case["model"], saved_case["platform"], saved_case["price"], decision, reason)
-    show_puzzle_feedback(saved_result.get("analysis", ""), saved_result.get("evidence_notes", ""), saved_case)
+    show_puzzle_feedback(saved_result.get("analysis", ""), saved_result.get("evidence_notes", ""))
 
     with st.container(border=True, key="seller_reply_stage"):
         st.markdown("### 💌 卖家回复了？把新线索放进来")
