@@ -1,5 +1,5 @@
-streamlit
-python-dotenv
-langchain-openai
-langgraph
-Pillow
+streamlit==1.66.0
+python-dotenv==1.2.4
+langchain-openai==1.7.2
+langgraph==1.2.15
+Pillow==12.3.0

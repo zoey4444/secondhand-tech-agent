@@ -4,6 +4,7 @@ import re
 from html import escape
 
 import streamlit.components.v1 as components
+from review_policy import source_label, unique_questions
 
 
 def split_analysis(analysis: str) -> dict[str, str]:
@@ -23,25 +24,19 @@ def split_analysis(analysis: str) -> dict[str, str]:
     return sections
 
 
-def seller_message(section: str) -> str:
-    lines = []
-    for raw in section.splitlines():
-        line = re.sub(r"^\s*(?:[-*•]\s*|\d+[.)、]\s*)", "", raw).replace("**", "").strip()
-        if line:
-            lines.append(line)
-    if not lines:
-        return ""
-    return "您好，我想确认这件商品的几个问题：\n" + "\n".join(f"{index}. {line}" for index, line in enumerate(lines, 1)) + "\n谢谢！"
+def seller_message(section: str, case: dict | None = None) -> str:
+    return "\n".join(unique_questions(section.splitlines()))
 
 
 def first_complete_sentence(body: str) -> str:
     """Use a complete short sentence; never cut model text mid-thought."""
+    body = "\n".join(line for line in body.splitlines() if not re.match(r"\s*(?:依据|状态|listing|chat)[：:]", line))
     cleaned = re.sub(r"[*#`]+", "", body)
     cleaned = re.sub(r"(?m)^\s*[-•]\s*", "", cleaned)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     for match in re.finditer(r"[^。！？；]+[。！？；]", cleaned):
         sentence = match.group().strip(" -|：")
-        if 12 <= len(sentence) <= 78 and "|---" not in sentence:
+        if len(sentence) >= 8 and "|---" not in sentence and "unanswered" not in sentence:
             return sentence
     return ""
 
@@ -60,14 +55,22 @@ def card_summary(title: str, body: str, notes: str = "", case: dict | None = Non
         return "已收到卖家新回复；请对照上一轮疑点查看哪些得到回答。"
     if title == "已知信息":
         if platform and model and price:
+            if price in {"未标价", "价格面议", "面议", "私聊报价", "待定", "暂无报价"}:
+                return f"当前核验的是{platform}上的{model}；商品页未提供明确价格，最终成交价需要先确认。"
             return f"当前核验的是{platform}上的{model}，标价{price}；商品陈述尚未核实。"
         return "这里汇总已填写的商品信息；卖家描述仍属于待核实陈述。"
     if title == "缺失或矛盾":
-        has_price = "标价为" in notes and "描述中写有" in notes
-        has_model = "型号选择为" in notes and "商品描述写的是" in notes
+        if price in {"未标价", "价格面议", "面议", "私聊报价", "待定", "暂无报价"}:
+            return "商品页没有明确标价，先确认最终成交价，并核对平台订单金额。"
+        has_price = "标价与商品描述中的价格不一致" in notes or "标价与商品描述中的价格不一致" in body
+        has_model = "选择的耳机型号与描述中的系列不一致" in notes or "选择的耳机型号与描述中的系列不一致" in body
         if has_price and has_model:
             return "价格和型号都存在前后不一致，先核实最终成交价与准确型号。"
         if has_price:
+            listing_price = re.search(r'(?:listing|商品描述)[：:]\s*[“"]([^”"]+)', body)
+            if price and listing_price:
+                shown_price = price if price.endswith(("元", "块")) else price + "元"
+                return f"标价{shown_price}，描述写{listing_price.group(1)}；请先确认最终成交价。"
             return "标价与商品描述中的价格不一致，先核实最终成交价。"
         if has_model:
             return "选择的型号与商品描述不一致，先确认实际型号。"
@@ -92,12 +95,12 @@ def clean_detail(body: str) -> str:
     return "\n".join(line for line in lines if not re.fullmatch(r"\s*\|?[-:|\s]+\|?\s*", line))
 
 
-def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = None) -> str:
+def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = None, review: dict | None = None) -> str:
     sections = split_analysis(analysis)
     notes = evidence_notes.strip()
-    if notes and not notes.startswith("规则扫描未发现"):
-        sections["缺失或矛盾"] = "程序检查：\n" + notes + "\n\n模型分析：\n" + sections.get("缺失或矛盾", "")
-    questions = seller_message(sections.get("建议向卖家核实", ""))
+    if not review and notes and not notes.startswith("规则扫描未发现"):
+        sections["缺失或矛盾"] = "已发现的线索：\n" + notes + "\n\n还需核实的地方：\n" + sections.get("缺失或矛盾", "")
+    questions = seller_message(sections.get("建议向卖家核实", ""), case)
     tiles = [
         ("已知信息", "🔎", "01", "把商品说清楚"),
         ("缺失或矛盾", "🧩", "02", "先找证据缺口"),
@@ -112,7 +115,24 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
     rendered = []
     for index, (title, icon, _number, subtitle) in enumerate(tiles, 1):
         body = sections.get(title, "这一项没有形成单独的分析内容，可结合其他拼图查看。")
+        if title == "建议向卖家核实" and questions:
+            body = questions
         summary = card_summary(title, body, notes, case)
+        if review:
+            if title == "已知信息":
+                summary += "\n" + "\n".join(f"{source_label(c['source'])}称：{c['claim']}" for c in review.get("claims", [])[:4])
+                if len(review.get("claims", [])) > 4:
+                    summary += f"\n另有 {len(review['claims']) - 4} 条陈述，展开查看。"
+                payment = (case or {}).get("payment_channel")
+                if payment:
+                    summary += f"\n下单付款渠道：{payment}。"
+            elif title == "缺失或矛盾":
+                issues = review.get("issues", [])
+                summary = "\n".join(f"• {i['summary']}" for i in issues) if issues else "当前资料未检出具体矛盾；仍需核对实物。"
+            elif title == "初步风险提示":
+                summary = review.get("decision_reason", summary)
+            elif title == "建议向卖家核实":
+                summary = f"已整理 {len(review.get('questions', []))} 条追问，点击查看后可复制。" if questions else "本轮没有新增追问，可按验货清单核对实物。"
         question_button = '<button class="pz-copy" id="copySeller" type="button">📋 一键复制给卖家</button><span id="copyStatus" class="pz-copy-status" aria-live="polite"></span>' if title == "建议向卖家核实" and questions else ""
         rendered.append(
             f'<article class="pz-tile {"pz-question" if title == "建议向卖家核实" else ""}">'
@@ -122,7 +142,7 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
             f'<p class="pz-summary">{escape(summary)}</p>'
             '<div class="pz-actions">'
             f'{question_button}'
-            '<button class="pz-expand" type="button" aria-expanded="false">查看依据与建议 ↓</button>'
+            f'<button class="pz-expand" type="button" aria-expanded="false" data-closed-label="{"查看要发送的话 ↓" if title == "建议向卖家核实" else "查看依据与建议 ↓"}">{"查看要发送的话 ↓" if title == "建议向卖家核实" else "查看依据与建议 ↓"}</button>'
             '</div>'
             f'<div class="pz-details" hidden>{escape(clean_detail(body))}</div>'
             '</article>'
@@ -140,7 +160,7 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
 .pz-tile:nth-child(2){animation-delay:.07s}.pz-tile:nth-child(3){animation-delay:.14s}.pz-tile:nth-child(4){animation-delay:.21s}.pz-tile:nth-child(5){animation-delay:.28s}.pz-tile:nth-child(6){animation-delay:.35s}
 .pz-tile:after{content:"";position:absolute;top:48%;right:-17px;width:28px;height:28px;border-radius:50%;background:var(--tile);border:2px solid #63bad9;z-index:3}.pz-tile:nth-child(3n):after{top:auto;right:42%;bottom:-17px}.pz-tile:last-child:after{display:none}
 .pz-question{border-width:3px;box-shadow:0 9px 0 #63bad961,0 15px 26px #63bad938}
-.pz-num{display:inline-block;align-self:flex-start;border-radius:999px;background:#caebed;border:1px solid #63bad9;padding:4px 9px;font-size:11px;font-weight:900;letter-spacing:1px}.pz-icon{font-size:28px;margin-top:8px}.pz-tile h3{margin:2px 0 0;font-size:20px}.pz-sub{font-size:12px;font-weight:750;color:#286782;margin-top:3px}.pz-summary{font-size:14px;font-weight:650;line-height:1.55;margin:12px 0 14px;word-break:break-word}.pz-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:auto}
+.pz-num{display:inline-block;align-self:flex-start;border-radius:999px;background:#caebed;border:1px solid #63bad9;padding:4px 9px;font-size:11px;font-weight:900;letter-spacing:1px}.pz-icon{font-size:28px;margin-top:8px}.pz-tile h3{margin:2px 0 0;font-size:20px}.pz-sub{font-size:12px;font-weight:750;color:#286782;margin-top:3px}.pz-summary{white-space:pre-line;font-size:14px;font-weight:650;line-height:1.55;margin:12px 0 14px;word-break:break-word}.pz-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:auto}
 .pz-expand,.pz-copy,.pz-close{cursor:pointer;border-radius:10px;font-size:12px;font-weight:900;padding:8px 10px}.pz-expand,.pz-close{border:1px solid #63bad9;background:#caebed;color:#1b6178}.pz-copy{border:0;background:#63bad9;color:#123e50}.pz-expand:hover,.pz-copy:hover,.pz-close:hover{filter:brightness(1.08)}.pz-copy-status{font-size:12px;font-weight:800;color:#1b6379}
 .pz-panel{margin-top:24px;padding:22px;border:2px solid #63bad9;border-radius:23px;background:#caebed;box-shadow:0 10px 20px #63bad928}.pz-panel-head{display:flex;align-items:start;justify-content:space-between;gap:15px}.pz-panel-kicker{font-size:12px;font-weight:900;color:#287897;letter-spacing:1px}.pz-panel h3{font-size:22px;margin:4px 0 8px}.pz-panel-summary{font-size:15px;font-weight:750;line-height:1.6;margin:0 0 16px;padding:11px 14px;background:#cce7d9;border-left:4px solid #63bad9;border-radius:10px}.pz-panel-label{font-size:13px;font-weight:900;color:#286782;margin:14px 0 7px}.pz-panel-body{white-space:pre-wrap;font-size:14px;line-height:1.7;word-break:break-word}
 .pz-foot{font-size:12px;margin-top:20px;color:#315d6c}.pz-hidden{position:absolute;left:-99999px;top:-99999px}
@@ -150,18 +170,18 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
 @media(prefers-reduced-motion:reduce){.pz-tile{animation:none;transition:none}}
 </style></head><body><div class="pz-shell"><div class="pz-head"><div><div class="pz-kicker">REVIEW PUZZLE · 每块先说清结论</div><h2>🧩 商品核验拼图</h2></div><p>先读完整结论，点开可看依据和行动。</p></div>
 <div class="pz-grid">__TILES__</div>
-<section class="pz-panel" id="detailPanel" hidden tabindex="-1"><div class="pz-panel-head"><div><div class="pz-panel-kicker">当前选中的拼图</div><h3 id="panelTitle"></h3></div><button class="pz-close" id="closePanel" type="button">收起 ↑</button></div><p class="pz-panel-summary" id="panelSummary"></p><div class="pz-panel-label">完整依据与建议</div><div class="pz-panel-body" id="panelBody"></div></section>
-<div class="pz-foot">结论基于用户提交的信息和模型分析；卖家陈述仍需凭证或实物核验。</div>
+<section class="pz-panel" id="detailPanel" hidden tabindex="-1"><div class="pz-panel-head"><div><div class="pz-panel-kicker">当前选中的拼图</div><h3 id="panelTitle"></h3></div><button class="pz-close" id="closePanel" type="button">收起 ↑</button></div><p class="pz-panel-summary" id="panelSummary"></p><div class="pz-panel-label" id="panelLabel">完整依据与建议</div><div class="pz-panel-body" id="panelBody"></div></section>
+<div class="pz-foot">以上判断只基于你提交的材料；卖家的说法还需要凭证或实物核对。</div>
 <textarea id="sellerMessage" class="pz-hidden" aria-hidden="true">__COPY_TEXT__</textarea></div>
 <script>
 const panel=document.getElementById('detailPanel');let selected=null;
-document.querySelectorAll('.pz-expand').forEach(function(button){button.addEventListener('click',function(){const tile=button.closest('.pz-tile');if(selected===tile&&!panel.hidden){panel.hidden=true;tile.classList.remove('pz-selected');button.textContent='查看依据与建议 ↓';button.setAttribute('aria-expanded','false');selected=null;return}document.querySelectorAll('.pz-tile').forEach(function(item){item.classList.remove('pz-selected');const b=item.querySelector('.pz-expand');b.textContent='查看依据与建议 ↓';b.setAttribute('aria-expanded','false')});selected=tile;tile.classList.add('pz-selected');button.textContent='收起详细内容 ↑';button.setAttribute('aria-expanded','true');document.getElementById('panelTitle').textContent=tile.querySelector('h3').textContent;document.getElementById('panelSummary').textContent=tile.querySelector('.pz-summary').textContent;document.getElementById('panelBody').textContent=tile.querySelector('.pz-details').textContent;panel.hidden=false;panel.scrollIntoView({behavior:'smooth',block:'start'})})});
-document.getElementById('closePanel').addEventListener('click',function(){panel.hidden=true;if(selected){selected.classList.remove('pz-selected');const b=selected.querySelector('.pz-expand');b.textContent='查看依据与建议 ↓';b.setAttribute('aria-expanded','false');selected=null}});
+document.querySelectorAll('.pz-expand').forEach(function(button){button.addEventListener('click',function(){const tile=button.closest('.pz-tile');if(selected===tile&&!panel.hidden){panel.hidden=true;tile.classList.remove('pz-selected');button.textContent=button.dataset.closedLabel;button.setAttribute('aria-expanded','false');selected=null;return}document.querySelectorAll('.pz-tile').forEach(function(item){item.classList.remove('pz-selected');const b=item.querySelector('.pz-expand');b.textContent=b.dataset.closedLabel;b.setAttribute('aria-expanded','false')});selected=tile;tile.classList.add('pz-selected');button.textContent='收起详细内容 ↑';button.setAttribute('aria-expanded','true');const title=tile.querySelector('h3').textContent;document.getElementById('panelTitle').textContent=title;document.getElementById('panelSummary').textContent=tile.querySelector('.pz-summary').textContent;document.getElementById('panelLabel').textContent=title==='建议向卖家核实'?'可以直接复制发送':'完整依据与建议';document.getElementById('panelBody').textContent=tile.querySelector('.pz-details').textContent;panel.hidden=false;panel.scrollIntoView({behavior:'smooth',block:'start'})})});
+document.getElementById('closePanel').addEventListener('click',function(){panel.hidden=true;if(selected){selected.classList.remove('pz-selected');const b=selected.querySelector('.pz-expand');b.textContent=b.dataset.closedLabel;b.setAttribute('aria-expanded','false');selected=null}});
 const copy=document.getElementById('copySeller');if(copy){copy.addEventListener('click',async function(){const input=document.getElementById('sellerMessage');const status=document.getElementById('copyStatus');let copied=false;try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(input.value);copied=true}}catch(e){}if(!copied){input.style.left='0';input.style.top='0';input.style.display='block';input.focus();input.select();try{copied=document.execCommand('copy')}catch(e){}input.style.display='none';input.style.left='-99999px';input.style.top='-99999px'}status.textContent=copied?'已复制，可粘贴给卖家 ✓':'复制未成功，请展开后手动复制'})}
 </script></body></html>"""
     html = html.replace("__COPY_TEXT__", escape(questions)).replace("__TILES__", "".join(rendered))
     return html
 
 
-def show_puzzle_feedback(analysis: str, evidence_notes: str, case: dict | None = None) -> None:
-    components.html(build_puzzle_html(analysis, evidence_notes, case), height=760, scrolling=True)
+def show_puzzle_feedback(analysis: str, evidence_notes: str, case: dict | None = None, review: dict | None = None) -> None:
+    components.html(build_puzzle_html(analysis, evidence_notes, case, review), height=900, scrolling=True)

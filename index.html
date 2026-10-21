@@ -1,0 +1,21 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><style>html,body{margin:0}iframe{border:0;width:100%;height:700px}</style></head><body>
+<iframe id="scene" title="商品投掷场景" sandbox="allow-scripts"></iframe>
+<script>
+const scene = document.getElementById('scene');
+let currentHTML = '', sceneToken = '';
+function send(type, data) { window.parent.postMessage({isStreamlitMessage:true,type,...data}, '*'); }
+window.addEventListener('message', event => {
+  const data = event.data || {};
+  if (event.source === window.parent && data.type === 'streamlit:render') {
+    const args = data.args || {};
+    sceneToken = args.token || '';
+    if (args.html !== currentHTML) { currentHTML = args.html; scene.srcdoc = currentHTML; }
+    send('streamlit:setFrameHeight', {height:700});
+  }
+  if (event.source === scene.contentWindow && data.type === 'cart:toss' && data.token === sceneToken) {
+    send('streamlit:setComponentValue', {value:{action:'toss',token:sceneToken},dataType:'json'});
+  }
+});
+send('streamlit:componentReady', {apiVersion:1});
+send('streamlit:setFrameHeight', {height:700});
+</script></body></html>

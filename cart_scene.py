@@ -2,6 +2,7 @@
 
 from html import escape
 import json
+from pathlib import Path
 
 import streamlit.components.v1 as components
 
@@ -29,8 +30,8 @@ def product_icon(category: str) -> str:
     return f'<svg viewBox="0 0 180 170" role="img" aria-label="{escape(category, quote=True)}示意图"><g {common}>{parts}</g></svg>'
 
 
-def show_cart_scene(category: str, model: str, platform: str, price: str, decision: str, reason: str) -> None:
-    if decision not in {"allow", "reject", "wait"}:
+def build_cart_html(category: str, model: str, platform: str, price: str, decision: str, reason: str, token: str = "") -> str:
+    if decision not in {"allow", "reject", "wait", "pending"}:
         decision = "wait"
     values = {
         "__ICON__": product_icon(category),
@@ -39,6 +40,7 @@ def show_cart_scene(category: str, model: str, platform: str, price: str, decisi
         "__PLATFORM__": escape(platform[:30]),
         "__PRICE__": escape((price or "价格待确认")[:30]),
         "__DECISION__": decision,
+        "__TOKEN_JSON__": json.dumps(token).replace("<", "\\u003c"),
         "__REASON_JSON__": json.dumps(reason[:180], ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026"),
     }
     html = r"""<!doctype html>
@@ -85,6 +87,13 @@ body{background:#caebed;color:#174b60}
  function setFeedback(title,detail,kind){feedback.className='feedback '+kind;feedback.textContent='';const strong=document.createElement('strong');strong.textContent=title;feedback.appendChild(strong);feedback.appendChild(document.createElement('br'));feedback.appendChild(document.createTextNode(detail));}
  function toss(){
   if(attempted)return; attempted=true; dragging=false; throwButton.disabled=true; product.classList.remove('dragging');
+  if(decision==='pending'){
+   again.disabled=true;
+   product.style.transform='translate(90px,-50px) rotate(-15deg)';
+   setFeedback('正在核对提交的材料……','分析完成后，这里会显示投掷结果，下方会一起出现核验拼图。','wait');
+   setTimeout(function(){window.parent.postMessage({type:'cart:toss',token:__TOKEN_JSON__},'*');},380);
+   return;
+  }
   const p=product.getBoundingClientRect(), c=cart.getBoundingClientRect();
   const dx=c.left+c.width*.48-(p.left+p.width*.5)+dragX;
   const dy=c.top+c.height*.48-(p.top+p.height*.5)+dragY;
@@ -94,7 +103,7 @@ body{background:#caebed;color:#174b60}
    product.style.transition='transform .54s ease-in, opacity .5s';
    if(decision==='allow'){
     product.style.transform='translate('+dx+'px,'+dy+'px) rotate(15deg) scale(.42)';
-    setTimeout(function(){product.style.opacity='0';confetti.classList.add('on');setFeedback('✅ 成功进车：初步建议购买',reason,'allow');},550);
+    setTimeout(function(){product.style.opacity='0';confetti.classList.add('on');setFeedback('✅ 进入候选购物车：仍需验货',reason,'allow');},550);
    } else {
     product.style.transform='translate('+dx+'px,'+(dy-25)+'px) rotate(-18deg) scale(.84)';
     setTimeout(function(){cart.classList.add('shake');product.style.transform='translate(0,0) rotate(-8deg)';setTimeout(function(){product.style.transform='';},420);if(decision==='reject'){setFeedback('⛔ 被购物车弹回：暂不建议购买',reason,'reject');}else{setFeedback('🟡 停在购物车外：先补充证据',reason,'wait');}},550);
@@ -107,8 +116,15 @@ body{background:#caebed;color:#174b60}
  product.addEventListener('pointerup',function(){if(!dragging)return;dragging=false;const p=product.getBoundingClientRect(),c=cart.getBoundingClientRect();const overlap=p.right>c.left&&p.left<c.right&&p.bottom>c.top&&p.top<c.bottom;if(overlap){toss();}else{product.classList.remove('dragging');product.style.transform='';dragX=0;dragY=0;setFeedback('再靠近一点','把商品拖到购物车上方再松开，或点击“一键投掷”。','wait');}});
  product.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();toss();}});
  throwButton.addEventListener('click',toss);again.addEventListener('click',reset);
+ if(decision!=='pending'){toss();}
 })();
 </script></body></html>"""
     for marker, value in values.items():
         html = html.replace(marker, value)
-    components.html(html, height=700, scrolling=False)
+    return html
+
+
+def show_cart_scene(category: str, model: str, platform: str, price: str, decision: str, reason: str, token: str = ""):
+    component = components.declare_component("cart_toss", path=str(Path(__file__).with_name("cart_component")))
+    return component(html=build_cart_html(category, model, platform, price, decision, reason, token),
+                     token=token, key=f"cart_scene_{token}", default=None)

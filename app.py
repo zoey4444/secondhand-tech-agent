@@ -1,13 +1,15 @@
 import os
+import uuid
 import streamlit as st
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from agent_core import run_review, cart_gate
-from domain_knowledge import PLATFORMS, CATEGORIES, MODEL_OPTIONS, PLATFORM_GUIDANCE, CATEGORY_CHECKLIST
+from domain_knowledge import PLATFORMS, CATEGORIES, MODEL_OPTIONS, CATEGORY_CHECKLIST, transaction_guidance
 from cart_scene import show_cart_scene
 from image_dialogue import extract_chat_images
 from product_preview import show_product_preview
 from puzzle_feedback import show_puzzle_feedback
+from review_policy import source_label
 
 load_dotenv()
 
@@ -117,7 +119,7 @@ def review_case(case: dict) -> dict:
         max_retries=0,
     )
     payload = {**case, "category_guidance": CATEGORY_CHECKLIST.get(case["category"], ""),
-               "platform_guidance": PLATFORM_GUIDANCE.get(case["platform"], "")}
+               "platform_guidance": transaction_guidance(case)}
     return run_review(payload, llm)
 
 
@@ -145,21 +147,29 @@ if stage == 1:
     with st.container(border=True, key="step_platform"):
         st.markdown("### 🎟️ 第一站 · 选交易场景")
         saved_platform = st.session_state.get("confirmed_platform", PLATFORMS[0])
-        platform = st.selectbox("商品主要在哪个平台交易？", PLATFORMS,
+        platform = st.selectbox("在哪里看到这件商品？", PLATFORMS,
                                 index=PLATFORMS.index(saved_platform) if saved_platform in PLATFORMS else 0,
                                 key="journey_platform_choice",
-                                help="小红书可能只是展示渠道；这里选择最终沟通或成交的平台。")
+                                help="这里记录商品展示渠道；下单付款的地方单独填写。")
+        payment_options = ["尚未确定", "闲鱼", "转转", "淘宝", "京东", "小红书", "当面付款", "个人转账", "其他渠道"]
+        saved_payment = st.session_state.get("confirmed_payment_channel", "尚未确定")
+        payment_channel = st.selectbox("准备在哪里下单付款？", payment_options,
+                                      index=payment_options.index(saved_payment) if saved_payment in payment_options else 0,
+                                      key="journey_payment_channel")
         if st.button("确认平台，让购物车前进 →", type="primary", use_container_width=True):
             st.session_state["confirmed_platform"] = platform
+            st.session_state["confirmed_payment_channel"] = payment_channel
             st.session_state["journey_stage"] = 2
             st.session_state["journey_from"] = 1
             st.rerun()
 else:
     platform = st.session_state["confirmed_platform"]
     with st.container(border=True, key="step_platform"):
-        st.markdown(f"### ✅ 第一站 · {platform}")
+        st.markdown(f"### ✅ 第一站 · 展示：{platform}")
+        st.caption(f"下单付款：{st.session_state.get('confirmed_payment_channel', '尚未确定')}")
         if st.button("修改交易平台", key="edit_platform"):
             st.session_state.pop("review_result", None)
+            st.session_state.pop("scene_token", None)
             st.session_state["journey_stage"] = 1
             st.rerun()
 
@@ -171,7 +181,7 @@ if stage == 2:
                                 index=CATEGORIES.index(saved_category) if saved_category in CATEGORIES else 0,
                                 key="device_category")
         saved_choice = st.session_state.get("confirmed_model_choice", "")
-        options = MODEL_OPTIONS[category]
+        options = [*MODEL_OPTIONS[category], "不清楚型号"]
         model_choice = st.selectbox("选择具体型号", options,
                                     index=options.index(saved_choice) if saved_choice in options else None,
                                     placeholder="选择型号，或选手动填写", key=f"device_model_{category}")
@@ -187,7 +197,7 @@ if stage == 2:
                                       key=f"model_details_{category}")
         if model and model_details.strip():
             model = f"{model}；{model_details.strip()}"
-        st.caption("找不到型号？选择“其他型号（手动填写）”就能自己填。")
+        st.caption("知道部分型号可手动填写；无法确认时选择“不清楚型号”，无需猜测。")
         if st.button("确认型号，让购物车前进 →", type="primary", use_container_width=True):
             if not model.strip():
                 st.warning("先选一个型号，或手动填写准确型号。")
@@ -207,6 +217,7 @@ elif stage > 2:
         st.markdown(f"### ✅ 第二站 · {category} · {model}")
         if st.button("修改商品型号", key="edit_device"):
             st.session_state.pop("review_result", None)
+            st.session_state.pop("scene_token", None)
             st.session_state["journey_stage"] = 2
             st.rerun()
 else:
@@ -217,16 +228,33 @@ if stage == 3:
         st.markdown("### 🧷 第三站 · 为商品贴上线索")
         evidence_left, evidence_right = st.columns([0.8, 1.2], gap="large")
         with evidence_left:
-            price = st.text_input("价格标签", placeholder="例如：¥420", key="journey_price",
-                                  value=st.session_state.get("confirmed_price", ""))
+            saved_price = str(st.session_state.get("confirmed_price", "")).strip()
+            default_price_mode = "未标价" if saved_price == "未标价" else "已标价"
+            price_mode = st.radio("价格情况", ["已标价", "未标价"], horizontal=True,
+                                  index=0 if default_price_mode == "已标价" else 1,
+                                  key="journey_price_mode")
+            if "journey_price_number" not in st.session_state:
+                try:
+                    st.session_state["journey_price_number"] = float(saved_price) if saved_price else None
+                except ValueError:
+                    st.session_state["journey_price_number"] = None
+            if price_mode == "已标价":
+                price_number = st.number_input("商品标价（元）", min_value=0.01,
+                                               step=10.0, format="%.2f", key="journey_price_number",
+                                               placeholder="输入数字，例如 420")
+                price = f"{price_number:g}" if price_number is not None else ""
+                st.caption("用于核对商品页、描述和聊天中的价格是否一致；当前不估算外部市场价。")
+            else:
+                price = "未标价"
+                st.info("智能体会把最终成交价列为待核实项。")
             chat = render_chat_input("initial_chat", "卖家沟通内容（选填）")
         with evidence_right:
             listing = st.text_area("商品标题与描述", height=245, key="journey_listing",
                                    value=st.session_state.get("confirmed_listing", ""),
                                    placeholder="粘贴商品介绍、成色、配件及售后说明；先遮盖姓名、电话、地址和订单号。")
         if st.button("确认线索，拼出商品 →", type="primary", use_container_width=True):
-            if not price.strip() or not listing.strip():
-                st.warning("请先填写价格和商品描述，再确认这一站。")
+            if price_mode == "已标价" and not price.strip():
+                st.warning("请输入数字标价或选择“未标价”。")
             else:
                 st.session_state.update({"confirmed_price": price.strip(), "confirmed_listing": listing.strip(),
                                          "confirmed_chat": chat.strip(), "journey_stage": 4, "journey_from": 3})
@@ -237,9 +265,11 @@ elif stage == 4:
     chat = st.session_state["confirmed_chat"]
     with st.container(border=True, key="step_evidence"):
         st.markdown("### ✅ 第三站 · 商品线索已贴好")
-        st.caption(f"标价 {price} · 商品描述已填写")
+        price_caption = "未标价，需核实最终成交价" if price == "未标价" else f"标价 ¥{price}"
+        st.caption(f"{price_caption} · {'商品描述已填写' if listing else '暂无商品描述，将列为待补信息'}")
         if st.button("修改价格或描述", key="edit_evidence"):
             st.session_state.pop("review_result", None)
+            st.session_state.pop("scene_token", None)
             st.session_state["journey_stage"] = 3
             st.rerun()
 else:
@@ -250,26 +280,44 @@ st.progress((stage - 1) / 3, text=f"✨ 已确认 {stage - 1} / 3 站")
 submitted = stage == 4 and st.button("🛒 商品已成形，进入投掷场景", type="primary", use_container_width=True)
 
 if submitted:
-    current = {"platform": platform, "category": category, "model": model.strip(), "price": price.strip(), "listing": listing.strip(), "chat": chat.strip()}
-    with st.spinner("正在核对商品信息，绘制投掷场景……"):
-        result = review_case(current)
-    if result.get("error"):
-        st.error(result["error"])
-    else:
-        st.session_state["review_case"] = current
-        st.session_state["review_result"] = result
-        st.session_state["seller_replies"] = []
-        st.session_state["review_round"] = 1
-        st.session_state["decision_change"] = ""
+    current = {"platform": platform, "payment_channel": st.session_state.get("confirmed_payment_channel", "尚未确定"),
+               "category": category, "model": model.strip(), "price": price.strip(), "listing": listing.strip(), "chat": chat.strip()}
+    st.session_state.update(review_case=current, scene_token=uuid.uuid4().hex, analysis_attempted=False,
+                            seller_replies=[], review_round=1, decision_change="")
+    st.session_state.pop("review_result", None)
+    st.session_state.pop("review_error", None)
+    st.rerun()
 
-if "review_result" in st.session_state:
+if stage == 4 and "scene_token" in st.session_state:
+    saved_case = st.session_state["review_case"]
+    saved_result = st.session_state.get("review_result")
+    decision, reason = cart_gate(saved_result) if saved_result else ("pending", "")
+    event = show_cart_scene(saved_case["category"], saved_case["model"], saved_case["platform"], saved_case["price"],
+                            decision, reason, st.session_state["scene_token"])
+    if (isinstance(event, dict) and event.get("action") == "toss" and event.get("token") == st.session_state["scene_token"]
+            and not st.session_state.get("analysis_attempted")):
+        st.session_state["analysis_attempted"] = True
+        with st.spinner("正在核对材料，结果与拼图马上一起呈现……"):
+            result = review_case(saved_case)
+        if result.get("error"):
+            st.session_state["review_error"] = result["error"]
+        else:
+            st.session_state["review_result"] = result
+        st.rerun()
+    if st.session_state.get("review_error"):
+        st.error(st.session_state["review_error"])
+        if st.button("重新准备商品，再投一次"):
+            st.session_state.update(scene_token=uuid.uuid4().hex, analysis_attempted=False)
+            st.session_state.pop("review_error", None)
+            st.rerun()
+
+if stage == 4 and "review_result" in st.session_state:
     saved_case = st.session_state["review_case"]
     saved_result = st.session_state["review_result"]
     decision, reason = cart_gate(saved_result)
     st.markdown(f"### 🧪 第 {st.session_state['review_round']} 轮核验")
     if st.session_state.get("decision_change"):
         st.info(st.session_state["decision_change"])
-    show_cart_scene(saved_case["category"], saved_case["model"], saved_case["platform"], saved_case["price"], decision, reason)
     with st.expander("🔎 为什么这样判断？", expanded=False):
         st.caption("这里列出需要核实的地方及对应原文，方便你自己判断。")
         for index, issue in enumerate(saved_result.get("issues", [])[:10], 1):
@@ -277,15 +325,15 @@ if "review_result" in st.session_state:
                 priority = {"high": "优先核实", "medium": "需要核实", "low": "补充确认"}.get(issue["severity"], "待核实")
                 st.markdown(f"**{index}. {priority}｜{issue['summary']}**")
                 for item in issue.get("evidence", []):
-                    st.write(f"来源 {item['source']}：『{item['quote']}』")
+                    st.write(f"{source_label(item['source'])}：『{item['quote']}』")
                 status = {"unanswered": "还没得到答复", "answered_claim_only": "卖家已解释，仍需核对",
                           "contradicted": "回复前后不一致", "awaiting_independent_evidence": "还缺少可核对的凭证"}.get(issue['status'], "待核实")
                 st.caption(status)
         if saved_result.get("claims"):
             with st.expander("查看从原文提取的陈述（尚未核实）"):
                 for claim in saved_result["claims"]:
-                    st.write(f"{claim['source']}：『{claim['quote']}』→ {claim['claim']}")
-    show_puzzle_feedback(saved_result.get("analysis", ""), saved_result.get("evidence_notes", ""), saved_case)
+                    st.write(f"{source_label(claim['source'])}：『{claim['quote']}』→ {claim['claim']}")
+    show_puzzle_feedback(saved_result.get("analysis", ""), saved_result.get("evidence_notes", ""), saved_case, saved_result)
 
     with st.container(border=True, key="seller_reply_stage"):
         st.markdown("### 💌 卖家回复了？把新线索放进来")
