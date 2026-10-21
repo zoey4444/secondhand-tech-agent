@@ -106,7 +106,7 @@ body{background:#caebed;color:#174b60}
     setTimeout(function(){product.style.opacity='0';confetti.classList.add('on');setFeedback('✅ 进入候选购物车：仍需验货',reason,'allow');},550);
    } else {
     product.style.transform='translate('+dx+'px,'+(dy-25)+'px) rotate(-18deg) scale(.84)';
-    setTimeout(function(){cart.classList.add('shake');product.style.transform='translate(0,0) rotate(-8deg)';setTimeout(function(){product.style.transform='';},420);if(decision==='reject'){setFeedback('⛔ 被购物车弹回：暂不建议购买',reason,'reject');}else{setFeedback('🟡 停在购物车外：先补充证据',reason,'wait');}},550);
+    setTimeout(function(){cart.classList.add('shake');product.style.transform='translate(0,0) rotate(-8deg)';setTimeout(function(){product.style.transform='';},420);if(decision==='reject'){setFeedback('⛔ 被购物车弹回：暂不建议购买',reason,'reject');}else{setFeedback('🟡 先核对商品信息，再决定',reason,'wait');}},550);
    }
   },380);
  }
