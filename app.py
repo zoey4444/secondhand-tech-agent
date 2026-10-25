@@ -346,17 +346,14 @@ if stage == 4 and "review_result" in st.session_state:
             st.session_state["review_result"] = retried
             st.session_state["decision_change"] = "已重新分析当前材料；结果仍需结合原文和实物核对。"
             st.rerun()
-    with st.expander("🔎 为什么这样判断？", expanded=False):
-        st.caption("这里列出需要核实的地方及对应原文，方便你自己判断。")
+    with st.expander("🔎 查看待核实问题", expanded=False):
+        st.caption("这里只列出需要处理的问题；完整原文和处理状态可下载核验记录查看。")
         for index, issue in enumerate(saved_result.get("issues", [])[:10], 1):
             with st.container(border=True):
                 priority = {"high": "优先核实", "medium": "需要核实", "low": "补充确认"}.get(issue["severity"], "待核实")
                 st.markdown(f"**{index}. {priority}｜{issue['summary']}**")
-                for item in issue.get("evidence", []):
-                    st.write(f"{source_label(item['source'])}：『{item['quote']}』")
-                status = {"unanswered": "还没得到答复", "answered_claim_only": "卖家已解释，仍需核对",
-                          "contradicted": "回复前后不一致", "awaiting_independent_evidence": "还缺少可核对的凭证"}.get(issue['status'], "待核实")
-                st.caption(status)
+                if issue.get("question"):
+                    st.write(f"建议动作：{issue['question']}")
         if saved_result.get("claims"):
             with st.expander("查看从原文提取的陈述（尚未核实）"):
                 for claim in saved_result["claims"]:

@@ -101,6 +101,10 @@ def card_summary(title: str, body: str, notes: str = "", case: dict | None = Non
 
 def clean_detail(body: str) -> str:
     lines = [line.replace("**", "").rstrip() for line in body.splitlines()]
+    # Evidence and status remain in the downloadable/internal record. They are
+    # deliberately hidden from the buyer-facing card because the same wording
+    # is already represented by the concise issue and seller question.
+    lines = [line for line in lines if not re.match(r"\s*(?:依据|状态)[：:]", line)]
     return "\n".join(line for line in lines if not re.fullmatch(r"\s*\|?[-:|\s]+\|?\s*", line))
 
 
@@ -155,7 +159,7 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
             f'<p class="pz-summary">{escape(summary)}</p>'
             '<div class="pz-actions">'
             f'{question_button}'
-            f'<button class="pz-expand" type="button" aria-expanded="false" data-closed-label="{"查看要发送的话 ↓" if title == "建议向卖家核实" else "查看依据与建议 ↓"}">{"查看要发送的话 ↓" if title == "建议向卖家核实" else "查看依据与建议 ↓"}</button>'
+            f'<button class="pz-expand" type="button" aria-expanded="false" data-closed-label="{"查看要发送的话 ↓" if title == "建议向卖家核实" else "查看补充说明 ↓"}">{"查看要发送的话 ↓" if title == "建议向卖家核实" else "查看补充说明 ↓"}</button>'
             '</div>'
             f'<div class="pz-details" hidden>{escape(clean_detail(body))}</div>'
             '</article>'
@@ -181,14 +185,14 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
 @media(max-width:960px){.pz-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pz-tile:nth-child(3n):after{top:48%;right:-17px;bottom:auto}.pz-tile:nth-child(2n):after{top:auto;right:42%;bottom:-17px}}
 @media(max-width:600px){.pz-grid{grid-template-columns:1fr}.pz-tile{min-height:205px}.pz-tile:after,.pz-tile:nth-child(2n):after{top:auto;right:42%;bottom:-17px}.pz-head{display:block}.pz-head p{margin-top:8px}}
 @media(prefers-reduced-motion:reduce){.pz-tile{animation:none;transition:none}}
-</style></head><body><div class="pz-shell"><div class="pz-head"><div><div class="pz-kicker">REVIEW PUZZLE · 每块先说清结论</div><h2>🧩 商品核验拼图</h2></div><p>先读完整结论，点开可看依据和行动。</p></div>
+</style></head><body><div class="pz-shell"><div class="pz-head"><div><div class="pz-kicker">REVIEW PUZZLE · 每块先说清结论</div><h2>🧩 商品核验拼图</h2></div><p>先看要做什么，点开可看补充说明。</p></div>
 __ANALYSIS_NOTICE__<div class="pz-grid">__TILES__</div>
-<section class="pz-panel" id="detailPanel" hidden tabindex="-1"><div class="pz-panel-head"><div><div class="pz-panel-kicker">当前选中的拼图</div><h3 id="panelTitle"></h3></div><button class="pz-close" id="closePanel" type="button">收起 ↑</button></div><p class="pz-panel-summary" id="panelSummary"></p><div class="pz-panel-label" id="panelLabel">完整依据与建议</div><div class="pz-panel-body" id="panelBody"></div></section>
+<section class="pz-panel" id="detailPanel" hidden tabindex="-1"><div class="pz-panel-head"><div><div class="pz-panel-kicker">当前选中的拼图</div><h3 id="panelTitle"></h3></div><button class="pz-close" id="closePanel" type="button">收起 ↑</button></div><p class="pz-panel-summary" id="panelSummary"></p><div class="pz-panel-label" id="panelLabel">补充说明</div><div class="pz-panel-body" id="panelBody"></div></section>
 <div class="pz-foot">以上判断只基于你提交的材料；卖家的说法还需要凭证或实物核对。</div>
 <textarea id="sellerMessage" class="pz-hidden" aria-hidden="true">__COPY_TEXT__</textarea></div>
 <script>
 const panel=document.getElementById('detailPanel');let selected=null;
-document.querySelectorAll('.pz-expand').forEach(function(button){button.addEventListener('click',function(){const tile=button.closest('.pz-tile');if(selected===tile&&!panel.hidden){panel.hidden=true;tile.classList.remove('pz-selected');button.textContent=button.dataset.closedLabel;button.setAttribute('aria-expanded','false');selected=null;return}document.querySelectorAll('.pz-tile').forEach(function(item){item.classList.remove('pz-selected');const b=item.querySelector('.pz-expand');b.textContent=b.dataset.closedLabel;b.setAttribute('aria-expanded','false')});selected=tile;tile.classList.add('pz-selected');button.textContent='收起详细内容 ↑';button.setAttribute('aria-expanded','true');const title=tile.querySelector('h3').textContent;document.getElementById('panelTitle').textContent=title;document.getElementById('panelSummary').textContent=tile.querySelector('.pz-summary').textContent;document.getElementById('panelLabel').textContent=title==='建议向卖家核实'?'可以直接复制发送':'完整依据与建议';document.getElementById('panelBody').textContent=tile.querySelector('.pz-details').textContent;panel.hidden=false;document.getElementById('panelTitle').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center',inline:'nearest'});panel.focus({preventScroll:true})})});
+document.querySelectorAll('.pz-expand').forEach(function(button){button.addEventListener('click',function(){const tile=button.closest('.pz-tile');if(selected===tile&&!panel.hidden){panel.hidden=true;tile.classList.remove('pz-selected');button.textContent=button.dataset.closedLabel;button.setAttribute('aria-expanded','false');selected=null;return}document.querySelectorAll('.pz-tile').forEach(function(item){item.classList.remove('pz-selected');const b=item.querySelector('.pz-expand');b.textContent=b.dataset.closedLabel;b.setAttribute('aria-expanded','false')});selected=tile;tile.classList.add('pz-selected');button.textContent='收起详细内容 ↑';button.setAttribute('aria-expanded','true');const title=tile.querySelector('h3').textContent;document.getElementById('panelTitle').textContent=title;document.getElementById('panelSummary').textContent=tile.querySelector('.pz-summary').textContent;document.getElementById('panelLabel').textContent=title==='建议向卖家核实'?'可以直接复制发送':'补充说明';document.getElementById('panelBody').textContent=tile.querySelector('.pz-details').textContent;panel.hidden=false;document.getElementById('panelTitle').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center',inline:'nearest'});panel.focus({preventScroll:true})})});
 document.getElementById('closePanel').addEventListener('click',function(){panel.hidden=true;if(selected){selected.classList.remove('pz-selected');const b=selected.querySelector('.pz-expand');b.textContent=b.dataset.closedLabel;b.setAttribute('aria-expanded','false');selected=null}});
 const copy=document.getElementById('copySeller');if(copy){copy.addEventListener('click',async function(){const input=document.getElementById('sellerMessage');const status=document.getElementById('copyStatus');let copied=false;try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(input.value);copied=true}}catch(e){}if(!copied){input.style.left='0';input.style.top='0';input.style.display='block';input.focus();input.select();try{copied=document.execCommand('copy')}catch(e){}input.style.display='none';input.style.left='-99999px';input.style.top='-99999px'}status.textContent=copied?'已复制，可粘贴给卖家 ✓':'复制未成功，请展开后手动复制'})}
 </script></body></html>"""
