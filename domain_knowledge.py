@@ -1,4 +1,5 @@
 """Local platform prompts and device checklists; no live platform lookup."""
+import re
 
 PLATFORMS = ["闲鱼", "转转", "小红书", "淘宝", "京东", "微信/社交平台", "线下交易", "其他平台"]
 CATEGORIES = ["手机", "平板", "笔记本电脑", "台式电脑/配件", "相机（单反/微单/CCD）", "耳机", "智能手表/手环", "游戏机", "其他数码产品"]
@@ -36,6 +37,21 @@ CATEGORY_CHECKLIST = {
     "游戏机": "核对型号/版本/账号解绑与区域限制；测试读盘或卡槽、手柄摇杆、接口、散热、网络与存储，并确认游戏/账号是否可转移。",
     "其他数码产品": "先明确准确型号、关键配置、配件和可现场验证的核心功能，再按该品类查官方说明与售后条件。",
 }
+
+
+def checklist_for_case(case: dict) -> str:
+    """Use a component checklist when the selected product is a graphics card."""
+    category = str(case.get("category", ""))
+    model = str(case.get("model", ""))
+    if (category == "台式电脑/配件"
+            and not re.search(r"整机|主机|台式机|台式电脑", model)
+            and re.search(r"geforce|rtx|gtx|radeon|显卡", model, re.IGNORECASE)):
+        return (
+            "核对显卡品牌、完整型号、显存与接口；在实机核对识别信息并运行游戏或测试程序，"
+            "观察花屏、黑屏、温度、风扇和异常噪声；询问拆修、更换零件和使用记录，核对凭证及配件。"
+            "螺丝、防拆贴照片仅供参考，不能证明从未拆修；一次点亮或单段视频不能保证长期稳定，收货后需复查。"
+        )
+    return CATEGORY_CHECKLIST.get(category, CATEGORY_CHECKLIST["其他数码产品"])
 
 
 def transaction_guidance(case: dict) -> str:

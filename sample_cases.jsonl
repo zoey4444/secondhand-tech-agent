@@ -1,0 +1,6 @@
+{"id":"S01","source_type":"模拟","expected_decision":"reject","must_find":["价格","成交价"],"case":{"platform":"闲鱼","category":"耳机","model":"Apple AirPods 4 主动降噪版","price":"420","listing":"个人闲置 AirPods 4，260元包邮，支持验货。","chat":""}}
+{"id":"S02","source_type":"模拟","expected_decision":"reject","must_find":["转账","平台"],"case":{"platform":"小红书","category":"相机（单反/微单/CCD）","model":"Canon IXUS 95 IS（CCD）","price":"560","listing":"CCD 相机可正常开机，先加微信转账，再寄给你。","chat":""}}
+{"id":"S03","source_type":"模拟","expected_decision":"wait","must_find":["型号"],"case":{"platform":"转转","category":"手机","model":"","price":"900","listing":"自用手机，外观较新。","chat":""}}
+{"id":"S04","source_type":"模拟","expected_decision":"reject","must_find":["型号"],"case":{"platform":"闲鱼","category":"耳机","model":"Apple AirPods 4 主动降噪版","price":"420","listing":"AirPods Pro 2，未拆封，420元。","chat":""}}
+{"id":"S05","source_type":"模拟","must_find":["电池","维修"],"case":{"platform":"闲鱼","category":"笔记本电脑","model":"Apple MacBook Air M2（2022）","price":"3500","listing":"自用 MacBook Air M2，电池状态和维修史暂不清楚，可当面验机。","chat":""}}
+{"id":"S06","source_type":"模拟","must_find":["账号","验货"],"case":{"platform":"线下交易","category":"游戏机","model":"Nintendo Switch OLED","price":"1200","listing":"自用 Switch OLED，附手柄和电源，线下当面交易。","chat":""}}

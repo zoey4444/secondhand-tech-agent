@@ -1,21 +1,20 @@
-# 二手数码交易核验智能体 V2
+# 证据拼图 · 二手数码购前核验 V2.2
 
-## V2.1 评测后更新（2026-10-21，本地候选版）
+## V2.2 集中修订（2026-10-25，本地候选版）
 
-30 条人工截图评测的统一改动、输入偏差和验证限制见 `评测总结与改进落实.md`。现在先进入场景，投掷后再分析；普通信息不足显示等待，拼图按结构化疑点展示来源与状态。支持未知型号、空描述以及独立的下单付款渠道。卖家追问规则位于 `skills/seller-chat/SKILL.md`，已被分析器实际读取。
+本版针对此前截图中出现的重复追问、通用警告盖过具体问题、多轮进展不清楚等情况集中修订。原文先由程序编号，模型选编号，程序取回原句；保留严格引用检查，并在格式或引用出错时最多纠正一次。已经找到的有效缺口继续展示，分析异常单独提示。引用存在仍不等于推断正确或商品真实。
 
-部署必须同时包含 `review_policy.py`、`cart_component/index.html`、`skills/seller-chat/SKILL.md`；不能只替换 app.py。当前改动尚未上线，离线测试不等于新版 30 条真实模型复测完成。
+页面增加“重新分析当前材料”和“下载本次核验记录”；动画按钮明确为“重播动画”。卖家具体解释、仍待核实的问题和本轮新增疑点分别显示；笼统的“放心吧”不会自动清掉旧问题。价格追问合并，显卡使用专门验货清单。支持未知型号、未标价和独立的下单付款渠道。话术文件 `skills/seller-chat/SKILL.md` 漏传时使用内置简版，但完整部署仍应保留原文件。
+
+新增 `evidence_refs.py`、`review_record.py` 必须上传；保留 `cart_component/index.html`、`skills/seller-chat/SKILL.md`、`.streamlit/config.toml` 的目录。不能只替换 app.py。当前交付是本地候选版，未代替用户更新 GitHub 或部署；离线测试不等于真实模型效果评测。旧版原始记录另行留存，部署包不含个人评测原始材料。
 
 离线验证（不调用模型）：
 
 ```text
-python -X utf8 tests/test_agent_v2.py
-python -X utf8 -m unittest discover -s tests -p test_batch_review.py -v
-python -X utf8 -m unittest discover -s tests -p test_app_flow.py -v
-python -X utf8 tests/test_scene_protocol.py
+python -X utf8 -m unittest discover -s tests -p "test_*.py" -v
 ```
 
-最后一项需要 Node.js，只用于开发测试，运行应用不需要 Node.js。页面流程测试需要本机回环连接。检查结果与限制见总结文档。
+组件交互测试需要 Node.js，只用于开发测试，运行应用不需要 Node.js。页面流程测试需要本机回环连接。测试使用模拟模型响应，不产生真实模型费用。版本变更与上线验收见 `V2.2更新与复测说明.md`。
 
 可在 Streamlit Community Cloud 部署的证据优先型原型。用户提供商品页面文字、价格、型号及可选聊天截图；应用找出可追溯疑点、规划追问、接收卖家回复并更新购物车状态。**它不鉴定真伪，不保证购买安全。**
 
@@ -33,9 +32,9 @@ flowchart LR
   H --> B
 ```
 
-`app.py` 只处理表单、动画与界面；`domain_knowledge.py` 维护平台提示、品类检查清单和型号入口；`agent_core.py` 负责 LangGraph 状态图、规则、模型输出结构、引用校验及购物车门控；`image_dialogue.py` 负责截图转写；`evaluate.py` 提供同模型对照记录。`cart_scene.py`、`product_preview.py` 与 `puzzle_feedback.py` 保留原有互动界面。
+`app.py` 处理表单、会话与界面；`domain_knowledge.py` 维护平台提示、品类检查清单和型号入口；`agent_core.py` 负责 LangGraph 状态图、规则、模型输出结构、引用校验及购物车门控；`evidence_refs.py` 提供原文编号与查找；`review_record.py` 生成可导出记录；`image_dialogue.py` 负责截图转写；`evaluate.py` 提供同模型逐轮对照记录。`cart_scene.py`、`product_preview.py` 与 `puzzle_feedback.py` 负责互动呈现。
 
-V2 默认每轮进行 **1 次文本模型调用**，只有返回不可解析的结构时才尝试第 2 次。模型调用设置超时；追问限定最多 3 个，模型候选疑点限定最多 8 个。超过长度上限的材料会导致保守的“等待补充”判断，而不是静默放行。面向买家的页面只展示结论、可核对的依据和自然口吻的卖家追问；调用耗时、token 用量和处理轨迹保留在内部结果中，供开发和评测使用。以上是设计约束，并不等于已经证实真实环境更快或更准确。
+默认每轮进行 **1 次文本模型调用**，只有结构或引用检查失败时才尝试第 2 次，两类纠正共用两次上限。文本分析和图片转写均设 35 秒单次请求超时，不另加客户端自动重试；这不是整页总响应时间保证。追问最多 3 个，模型候选疑点最多 8 个。过长材料会导致保守判断；多轮保留最近三条卖家回复和上轮未核实疑点。调用耗时、token 用量和处理轨迹随记录导出，供开发和评测使用，不等于已经证实更快或更准确。
 
 ## 相比旧版的关键变化
 
@@ -59,7 +58,7 @@ V2 默认每轮进行 **1 次文本模型调用**，只有返回不可解析的�
 
 ## 部署更新
 
-把部署包解压后的文件上传到原 GitHub 仓库根目录，并保留 `.streamlit/config.toml` 的目录结构。需要新增 `agent_core.py`、`domain_knowledge.py`；需要替换 `app.py`。`evaluate.py` 与 `sample_cases.jsonl` 用于比赛测试，建议一起上传。**不要上传 `.env`、个人聊天原图、真实案例原文或 API Key。** 提交后在 Streamlit Cloud 中重启应用，并用匿名样例验证。
+按 `DEPLOY.md` 把部署包内容更新至应用正在使用的仓库和分支，保留子目录结构。**不要上传 `.env`、个人聊天原图、实际核验导出记录或 API Key。** 本包不修改现有 Cloud Secrets。
 
 ## 效果评价
 
@@ -76,7 +75,9 @@ python evaluate.py --input sample_cases.jsonl --validate-only
 python evaluate.py --input sample_cases.jsonl --output comparison.csv
 ```
 
-输出记录两种方法的关键词覆盖、耗时、引用校验数量和原文。关键词覆盖只是粗筛，仍应人工复核疑点是否真实存在、追问是否可执行、回答是否过度确定。正式报告建议至少约 30 条分层案例，并分别标注模拟与真实来源。不要把离线单元测试当成真实模型准确率。
+输出记录版本、模型、时间、双方完整输入输出、耗时、用量、调用错误和引用检查情况；每对结果完成即保存，拒绝覆盖旧文件。关键词覆盖只是粗筛，不能称为准确率。普通问答和 Agent 得到相同外部材料，各自保留自己的历史回答，互不借用结果。两次纠正上限带来的调用成本也应纳入比较。
+
+`evaluation_followup_cases_draft.jsonl` 是新增的三条多轮模拟草稿，共九轮，预期须先由人工复核；运行前先使用 `--validate-only` 检查格式。不是实测结果。按预先固定的人工标准评价遗漏、误报、引用是否支持结论、追问可执行性及跨轮更新，保留失败记录。比赛资料没有规定必须测 30 条；要报告“新版在 30 条上的效果”，才需要新版实际跑完对应 30 条并复核，不能混用旧版输出。
 
 ## 参考的开源设计
 

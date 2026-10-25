@@ -1,32 +1,51 @@
-# 把二手数码交易助手分享给别人
+# V2.2 更新现有网页
 
-最适合演示的方式是把项目部署到 Streamlit Community Cloud。完成后会得到一个网页链接，别人打开就能使用，无须安装 Python。
+这是本地更新包，尚未替你提交 GitHub 或更新线上网页。沿用当前仓库、分支和 Cloud Secrets。
 
-## 一、上传代码到 GitHub
+## 操作顺序
 
-1. 登录 GitHub，创建一个新仓库，例如 `secondhand-tech-agent`。
-2. 在仓库页面选择 **Add file → Upload files**。
-3. 上传这些文件：`app.py`、`cart_scene.py`、`product_preview.py`、`puzzle_feedback.py`、`image_dialogue.py`、`requirements.txt`、`README.md`、`DEPLOY.md`、`.gitignore`、`.env.example`，以及 `.streamlit/config.toml`（注意保留 `.streamlit` 文件夹结构）。
-4. **不要上传 `.env`、`.streamlit/secrets.toml`、`.venv` 或 `__pycache__`。** 上传完成后再检查一次仓库文件列表。`.gitignore` 是额外保护，但手动网页上传时仍要自己核对。
+1. 下载并解压 `二手数码交易助手V2.2-完整部署包.zip`。打开解压后的文件夹，应该直接看到 `app.py` 和若干文件夹。
+2. 打开现有 GitHub 仓库 `secondhand-tech-agent`。确认选中的是 Streamlit 应用设置中正在使用的 Branch；如果那里显示 main，就选 main。
+3. 在仓库根目录使用 **Add file → Upload files**。上传解压文件夹里面的文件和子文件夹。不要只上传 ZIP，也不要把外层文件夹一起套进仓库。
+4. 点击 **Commit changes**，提交到刚才确认的分支。提交说明可以写 `Update review workflow to V2.2`。
+5. 等待应用完成更新，再打开应用。若仍是旧页面，从应用管理处重启一次。
+6. 完成一条分析后，页面底部应出现“版本 2.2”和“下载本次核验记录”；结果区域应有“重新分析当前材料”。这能帮助确认看到的是新版。
 
-## 二、部署到 Streamlit Community Cloud
+## 上传后的目录必须这样对应
 
-1. 打开 <https://share.streamlit.io/>，用 GitHub 登录。
-2. 点击 **Create app**，选择刚创建的仓库、分支和主文件 `app.py`。
-3. 打开 **Advanced settings → Secrets**，粘贴下面这行，并把引号内文字替换成自己的密钥：
+```text
+app.py
+agent_core.py
+evidence_refs.py           ← 新增，必需
+review_record.py           ← 新增，必需
+review_policy.py
+domain_knowledge.py
+cart_scene.py
+puzzle_feedback.py
+product_preview.py
+image_dialogue.py
+requirements.txt
+cart_component/
+    index.html
+skills/
+    seller-chat/
+        SKILL.md
+.streamlit/
+    config.toml
+```
 
-   ```toml
-   DEEPSEEK_API_KEY = "自己的DeepSeek密钥"
-   ```
+`index.html` 必须放在 `cart_component` 里，完整话术必须放在 `skills/seller-chat/SKILL.md`。同名文件放在根目录不能代替这些路径。缺失话术文件会使用内置简版，仍应上传完整文件。
 
-   密钥只填在 Streamlit 的 Secrets 设置中，不填在 GitHub 文件中，也不要发给他人。
-4. 点击部署。等安装和启动完成后，复制生成的 `streamlit.app` 网页链接，发给老师或测试者。
+包内 `tests` 文件夹、`evaluate.py`、模拟案例和说明文档也可以一并保留；它们不会在打开应用时自动执行。测试目录同时有 `.py` 和 `.cjs` 文件，两个都保留。
 
-## 三、试用与排查
+## 密钥与模型
 
-- 用手机或另一个浏览器打开分享链接，提交一条**不含个人信息**的模拟案例；分别试一次文字回复和聊天截图识别，确认可编辑识别结果、第二轮拼图和购物车变化提示出现。
-- 若显示“没有配置 API Key”，回到应用的 Secrets 检查变量名是否为 `DEEPSEEK_API_KEY`，并重新启动应用。
-- 若显示模型调用失败，检查 DeepSeek 密钥、额度、网络和模型名称。应用默认使用 `deepseek-flash`；如果你的账号使用其他可用模型，可在应用环境中设置 `DEEPSEEK_MODEL`。
-- 面向公众开放前先评估 API 用量；公开访问会使用你配置的密钥发起调用。可先只向指导老师和组员分享链接。
+继续使用已有配置。本包中的 `.env.example` 只是示例，没有真实密钥。不要把 `.env`、`.streamlit/secrets.toml`、个人截图或下载的真实交易记录上传 GitHub。
 
-本应用不保存跨浏览器会话的交易记录。分析基于使用者粘贴的文字，不能替代实物验货、凭证核验或平台争议处理。
+初次配置的开发者可以在本地复制 `.env.example` 为 `.env`，设置账号实际可用的模型与接口，再安装 `requirements.txt` 中依赖，运行 `streamlit run app.py`。Cloud 的密钥保存在应用 Secrets。不要因这次更新重复创建应用。
+
+## 一次集中验收
+
+具体输入和检查点见 `V2.2更新与复测说明.md`。先做三个代表案例及两个后续答复；每条完成后下载记录。若通过，就转入对照评测与报告整理，不继续重复相同冒烟案例。
+
+如果失败，保留下载的记录和错误截图，按具体失败项修复。新结果与旧版记录分开，不用修改代码后的预期替换旧实测结果。

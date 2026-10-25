@@ -4,9 +4,11 @@ __pycache__/
 *.py[cod]
 .streamlit/secrets.toml
 comparison*.csv
+review-*.json
 private_cases*.jsonl
 .autotest_deps/
 .autotest_tmp/
 修改前源码快照*/
 队长评测原始记录.md
+队长评测原始记录-可复制到Word.txt
 *.zip

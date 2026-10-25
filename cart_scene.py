@@ -41,7 +41,7 @@ def build_cart_html(category: str, model: str, platform: str, price: str, decisi
         "__PRICE__": escape((price or "价格待确认")[:30]),
         "__DECISION__": decision,
         "__TOKEN_JSON__": json.dumps(token).replace("<", "\\u003c"),
-        "__REASON_JSON__": json.dumps(reason[:180], ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026"),
+        "__REASON_JSON__": json.dumps(reason, ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026"),
     }
     html = r"""<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -74,7 +74,7 @@ body{background:#caebed;color:#174b60}
 <div class="product" id="product" tabindex="0" role="button" aria-label="拖动商品到购物车"><span class="ticket">__PRICE__</span>__ICON__<div class="device">__MODEL__</div><div class="meta">__CATEGORY__ · __PLATFORM__</div></div>
 <div class="trail">➜</div><div class="cartzone" id="cartZone"><svg viewBox="0 0 300 230" aria-label="购物车图案" role="img"><defs><linearGradient id="cartGrad" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#63bad9"/><stop offset="1" stop-color="#B5dae9"/></linearGradient></defs><path d="M28 45h33l27 112h153l29-82H78" stroke="#1b6077" stroke-width="10" stroke-linejoin="round" fill="none" stroke-linecap="round"/><path d="M84 78h185l-28 79H102z" fill="url(#cartGrad)" opacity=".84"/><path d="M95 168h146" stroke="#1b6077" stroke-width="10" stroke-linecap="round"/><circle cx="117" cy="195" r="15" fill="#63bad9"/><circle cx="220" cy="195" r="15" fill="#63bad9"/></svg></div>
 <div class="cartlabel">核验候选购物车</div><div class="floor">↗ 将商品拖到购物车上方松开</div><div class="confetti" id="confetti">✦ ✧ ✦ ✧</div></div>
-<div class="controls"><button class="throw" id="throw" type="button">🎯 一键投掷</button><button class="again" id="again" type="button">再试一次</button><span class="tip">投掷动画只展示分析结论；交易前仍需实物核验。</span></div>
+<div class="controls"><button class="throw" id="throw" type="button">🎯 一键投掷</button><button class="again" id="again" type="button">重播动画</button><span class="tip">投掷动画只展示分析结论；交易前仍需实物核验。</span></div>
 <div class="feedback" id="feedback" role="status" aria-live="polite">商品已生成。拖动它碰到购物车，或者点击“一键投掷”，查看分析结论。</div>
 </div>
 <script>
@@ -83,6 +83,7 @@ body{background:#caebed;color:#174b60}
  const feedback=document.getElementById('feedback'); const throwButton=document.getElementById('throw');
  const again=document.getElementById('again'); const confetti=document.getElementById('confetti');
  const decision=document.body.dataset.decision; const reason=__REASON_JSON__;
+ again.disabled=decision==='pending';
  let dragging=false, attempted=false, startX=0, startY=0, dragX=0, dragY=0;
  function setFeedback(title,detail,kind){feedback.className='feedback '+kind;feedback.textContent='';const strong=document.createElement('strong');strong.textContent=title;feedback.appendChild(strong);feedback.appendChild(document.createElement('br'));feedback.appendChild(document.createTextNode(detail));}
  function toss(){
@@ -110,7 +111,7 @@ body{background:#caebed;color:#174b60}
    }
   },380);
  }
- function reset(){attempted=false;dragging=false;dragX=0;dragY=0;throwButton.disabled=false;cart.classList.remove('shake');confetti.classList.remove('on');product.style.transition='';product.style.opacity='1';product.style.transform='';feedback.className='feedback';feedback.textContent='商品已准备好，再投一次看看分析结论。';}
+ function reset(){attempted=false;dragging=false;dragX=0;dragY=0;throwButton.disabled=false;cart.classList.remove('shake');confetti.classList.remove('on');product.style.transition='';product.style.opacity='1';product.style.transform='';feedback.className='feedback';feedback.textContent='正在重播本次分析结果……';if(decision!=='pending'){toss();}}
  product.addEventListener('pointerdown',function(e){if(attempted)return;dragging=true;startX=e.clientX;startY=e.clientY;dragX=0;dragY=0;product.classList.add('dragging');product.setPointerCapture(e.pointerId);});
  product.addEventListener('pointermove',function(e){if(!dragging)return;dragX=e.clientX-startX;dragY=e.clientY-startY;product.style.transform='translate('+dragX+'px,'+dragY+'px) rotate(-5deg)';});
  product.addEventListener('pointerup',function(){if(!dragging)return;dragging=false;const p=product.getBoundingClientRect(),c=cart.getBoundingClientRect();const overlap=p.right>c.left&&p.left<c.right&&p.bottom>c.top&&p.top<c.bottom;if(overlap){toss();}else{product.classList.remove('dragging');product.style.transform='';dragX=0;dragY=0;setFeedback('再靠近一点','把商品拖到购物车上方再松开，或点击“一键投掷”。','wait');}});

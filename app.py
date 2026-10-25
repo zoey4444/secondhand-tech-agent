@@ -1,19 +1,21 @@
 import os
 import uuid
+import json
 import streamlit as st
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from agent_core import run_review, cart_gate
-from domain_knowledge import PLATFORMS, CATEGORIES, MODEL_OPTIONS, CATEGORY_CHECKLIST, transaction_guidance
+from domain_knowledge import PLATFORMS, CATEGORIES, MODEL_OPTIONS, checklist_for_case, transaction_guidance
 from cart_scene import show_cart_scene
 from image_dialogue import extract_chat_images
 from product_preview import show_product_preview
 from puzzle_feedback import show_puzzle_feedback
 from review_policy import source_label
+from review_record import APP_VERSION, make_run_record
 
 load_dotenv()
 
-st.set_page_config(page_title="二手数码购物车实验室", page_icon="🛒", layout="wide")
+st.set_page_config(page_title="证据拼图 · 二手数码购前核验", page_icon="🧩", layout="wide")
 
 st.markdown("""
 <style>
@@ -55,10 +57,14 @@ div.stButton > button[kind="primary"]:hover {background:#caebed !important;trans
 st.markdown("""
 <div class="hero">
   <div class="hero-kicker">SECOND-HAND TECH · TOSS TO CART</div>
-  <div class="hero-title">🛒 把二手数码商品投进购物车</div>
-  <div class="hero-sub">每完成一站，购物车就向前开一步。三站确认后，商品成形，再亲手投进购物车。</div>
+  <div class="hero-title">🧩 证据拼图 · 二手数码购前核验</div>
+  <div class="hero-sub">对照商品描述和聊天，找出待核实的地方，整理成给卖家的追问；收到答复后，继续更新判断。</div>
 </div>
 """, unsafe_allow_html=True)
+st.caption("分析以你提供的材料为依据，不能鉴定真伪或保证交易安全。购物车展示当前核验状态。")
+with st.expander("提交的文字和截图会怎样使用？"):
+    st.write("点击分析时，商品文字和聊天记录会发送给配置的模型服务；截图在点击识别时发送。请先遮盖姓名、电话、地址、账号等个人信息。")
+    st.write("应用将当前交易记录保存在本次会话中，不主动写入服务器文件。需要留存时，可自行下载本次核验记录；刷新页面或服务重启可能使会话丢失。")
 
 def get_api_key() -> str:
     """Read a local environment variable or a Streamlit Cloud secret."""
@@ -118,7 +124,7 @@ def review_case(case: dict) -> dict:
         timeout=35,
         max_retries=0,
     )
-    payload = {**case, "category_guidance": CATEGORY_CHECKLIST.get(case["category"], ""),
+    payload = {**case, "category_guidance": checklist_for_case(case),
                "platform_guidance": transaction_guidance(case)}
     return run_review(payload, llm)
 
@@ -283,9 +289,10 @@ if submitted:
     current = {"platform": platform, "payment_channel": st.session_state.get("confirmed_payment_channel", "尚未确定"),
                "category": category, "model": model.strip(), "price": price.strip(), "listing": listing.strip(), "chat": chat.strip()}
     st.session_state.update(review_case=current, scene_token=uuid.uuid4().hex, analysis_attempted=False,
-                            seller_replies=[], review_round=1, decision_change="")
+                            seller_replies=[], review_round=1, decision_change="", review_history=[])
     st.session_state.pop("review_result", None)
     st.session_state.pop("review_error", None)
+    st.session_state.pop("round_previous_issues", None)
     st.rerun()
 
 if stage == 4 and "scene_token" in st.session_state:
@@ -299,6 +306,7 @@ if stage == 4 and "scene_token" in st.session_state:
         st.session_state["analysis_attempted"] = True
         with st.spinner("正在核对材料，结果与拼图马上一起呈现……"):
             result = review_case(saved_case)
+        st.session_state["review_history"].append(make_run_record(saved_case, result, os.getenv("DEEPSEEK_MODEL", "deepseek-flash")))
         if result.get("error"):
             st.session_state["review_error"] = result["error"]
         else:
@@ -318,6 +326,26 @@ if stage == 4 and "review_result" in st.session_state:
     st.markdown(f"### 🧪 第 {st.session_state['review_round']} 轮核验")
     if st.session_state.get("decision_change"):
         st.info(st.session_state["decision_change"])
+    if saved_result.get("round_changes"):
+        with st.expander("这次答复解决了什么，还缺什么？", expanded=True):
+            for change in saved_result["round_changes"]:
+                st.write(f"{change['change']}：{change['summary']}")
+    if st.button("重新分析当前材料", key="reanalyze_current"):
+        retry_case = {**saved_case, "seller_replies": st.session_state["seller_replies"]}
+        # Re-analyse the same round and retain every already identified issue.
+        prior_by_id = {issue["id"]: issue for issue in st.session_state.get("round_previous_issues", [])}
+        prior_by_id.update({issue["id"]: issue for issue in saved_result.get("issues", [])})
+        retry_case["previous_issues"] = list(prior_by_id.values())
+        with st.spinner("正在重新核对当前材料……"):
+            retried = review_case(retry_case)
+        st.session_state.setdefault("review_history", []).append(make_run_record(
+            retry_case, retried, os.getenv("DEEPSEEK_MODEL", "deepseek-flash"), st.session_state["review_round"]))
+        if retried.get("error"):
+            st.error(retried["error"])
+        else:
+            st.session_state["review_result"] = retried
+            st.session_state["decision_change"] = "已重新分析当前材料；结果仍需结合原文和实物核对。"
+            st.rerun()
     with st.expander("🔎 为什么这样判断？", expanded=False):
         st.caption("这里列出需要核实的地方及对应原文，方便你自己判断。")
         for index, issue in enumerate(saved_result.get("issues", [])[:10], 1):
@@ -351,12 +379,15 @@ if stage == 4 and "review_result" in st.session_state:
                 }
                 with st.spinner("正在对照上一轮疑点，检查新回复……"):
                     followup_result = review_case(followup_case)
+                st.session_state.setdefault("review_history", []).append(make_run_record(
+                    followup_case, followup_result, os.getenv("DEEPSEEK_MODEL", "deepseek-flash"), st.session_state["review_round"] + 1))
                 if followup_result.get("error"):
                     st.error(followup_result["error"])
                 else:
+                    st.session_state["round_previous_issues"] = saved_result.get("issues", [])
                     old_decision, _ = cart_gate(saved_result)
                     new_decision, _ = cart_gate(followup_result)
-                    labels = {"allow": "可进入购物车", "reject": "暂不建议进入购物车", "wait": "等待补充信息"}
+                    labels = {"allow": "当前材料未见明显异常", "reject": "先解决交易冲突或付款问题", "wait": "仍需补充或核对信息"}
                     if new_decision == old_decision:
                         change = f"与上一轮相比，购物车判断仍是「{labels[new_decision]}」。请看‘回复后的变化’拼图，确认疑点是否真正解决。"
                     else:
@@ -371,4 +402,10 @@ if stage == 4 and "review_result" in st.session_state:
             for index, reply in enumerate(st.session_state["seller_replies"], 1):
                 st.markdown(f"**第 {index} 次回复**")
                 st.text(reply)
+
+if stage == 4 and st.session_state.get("review_history"):
+    records = st.session_state["review_history"]
+    st.download_button("下载本次核验记录", json.dumps(records, ensure_ascii=False, indent=2),
+                       file_name=f"review-{records[0]['run_id'][:8]}.json", mime="application/json", key="download_review")
+    st.caption(f"版本 {APP_VERSION} · 已保留本次会话 {len(records)} 次分析记录，含输入、回答和处理状态，便于复核。")
 
