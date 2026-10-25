@@ -328,10 +328,14 @@ def analyze_with_model(state: ReviewState, llm: Any) -> ReviewState:
             if first_data is not None:
                 data, validation_incomplete = first_data, True
                 break
-            return {"error": f"模型服务暂时不可用：{type(exc).__name__}。请检查密钥、额度和网络后重试。",
+            error_name = type(exc).__name__
+            message = ("模型响应超时（当前上限 90 秒），请稍后点击‘重新准备商品，再投一次’重试。"
+                       if "Timeout" in error_name else
+                       f"模型服务暂时不可用：{error_name}。请检查密钥、额度和网络后重试。")
+            return {"error": message,
                     "model_latency_ms": round((time.perf_counter() - started) * 1000),
                     "model_attempts": attempts, "model_total_tokens": total_tokens if usage_seen else None,
-                    "trace": [*state["trace"], f"模型请求失败：{type(exc).__name__}。"]}
+                    "trace": [*state["trace"], f"模型请求失败：{error_name}。"]}
     elapsed = round((time.perf_counter() - started) * 1000)
     return {"model_data": data,
             "model_latency_ms": elapsed, "model_attempts": attempts,

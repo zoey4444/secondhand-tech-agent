@@ -147,7 +147,15 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
                            "本次分析尚未可靠完成，暂时无法列出可核实的具体问题。" if review.get("analysis_notice") else
                            "当前资料未检出具体矛盾；仍需核对实物。")
             elif title == "初步风险提示":
-                summary = review.get("decision_reason", summary)
+                decision = review.get("decision", "wait")
+                if review.get("error"):
+                    summary = "本次分析没有完成，请重新分析当前材料。"
+                elif decision == "reject":
+                    summary = "先不要付款：先解决上面的价格、型号或付款冲突。"
+                elif decision == "allow":
+                    summary = "当前材料未见明显异常；付款前仍按清单核对实物和凭证。"
+                else:
+                    summary = "先补齐上面的关键信息，再决定是否付款。"
             elif title == "建议向卖家核实":
                 summary = f"已整理 {len(questions.splitlines())} 条追问，点击查看后可复制。" if questions else "本轮没有新增追问，可按验货清单核对实物。"
         question_button = '<button class="pz-copy" id="copySeller" type="button">📋 一键复制给卖家</button><span id="copyStatus" class="pz-copy-status" aria-live="polite"></span>' if title == "建议向卖家核实" and questions else ""

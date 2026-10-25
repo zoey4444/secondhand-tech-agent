@@ -121,7 +121,8 @@ def review_case(case: dict) -> dict:
         api_key=key,
         base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
         temperature=0.1,
-        timeout=35,
+        # Cloud cold starts and shared API capacity can exceed a short local timeout.
+        timeout=90,
         max_retries=0,
     )
     payload = {**case, "category_guidance": checklist_for_case(case),

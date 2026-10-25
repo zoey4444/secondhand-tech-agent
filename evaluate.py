@@ -212,7 +212,7 @@ def main():
     model_name = os.getenv("DEEPSEEK_MODEL", "deepseek-flash")
     llm = ChatOpenAI(model=model_name, api_key=key,
                      base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
-                     temperature=0.1, timeout=35, max_retries=0)
+                     temperature=0.1, timeout=90, max_retries=0)
     rows = write_comparison(cases, llm, args.output, model_name=model_name)
     failed = sum(row["pair_status"] == "error" for row in rows)
     print(f"已记录 {len(rows)} 轮成对运行，其中 {failed} 轮含调用错误；每轮已保存到 {args.output}。请人工复核引用和结论，勿将关键词覆盖当作准确率。")
