@@ -41,6 +41,21 @@ def followup_replies(item: dict) -> list[str]:
     return list(replies)
 
 
+VALID_DECISIONS = {"allow", "wait", "reject"}
+
+
+def label_readiness(rows: list[dict]) -> tuple[int, int, int]:
+    """Return (decision labels present, labels pending, total) for review transparency."""
+    labeled = sum(row.get("expected_decision") in VALID_DECISIONS for row in rows)
+    pending = sum(
+        not row.get("label_status")
+        or "待人工复核" in str(row.get("label_status", ""))
+        or str(row.get("label_status", "")).startswith("草拟")
+        for row in rows
+    )
+    return labeled, pending, len(rows)
+
+
 def load_cases(path: Path) -> list[dict]:
     cases = []
     seen_ids = set()
@@ -50,6 +65,9 @@ def load_cases(path: Path) -> list[dict]:
         row = json.loads(line)
         if not isinstance(row, dict) or not isinstance(row.get("case"), dict) or not isinstance(row.get("must_find", []), list):
             raise ValueError(f"第 {line_number} 行缺少 case 或 must_find")
+        decision = row.get("expected_decision", "")
+        if decision not in (None, "", *VALID_DECISIONS):
+            raise ValueError(f"第 {line_number} 行的 expected_decision 必须是 allow、wait、reject 或留空待复核")
         case_id = row.get("id")
         if not isinstance(case_id, str) or not case_id.strip() or case_id in seen_ids:
             raise ValueError(f"第 {line_number} 行的案例 id 为空或重复")
@@ -199,7 +217,11 @@ def main():
             parser.error("有案例编号未在输入文件中找到")
     if args.validate_only:
         rounds = sum(1 + len(followup_replies(item)) for item in cases)
+        labeled, pending, total = label_readiness(cases)
         print(f"案例格式检查通过：{len(cases)} 条，{rounds} 轮；未调用模型。")
+        print(f"标签准备情况：预期决策 {labeled}/{total} 条，待填写 {total - labeled} 条；待人工复核 {pending} 条。")
+        if total - labeled or pending:
+            print("当前结果只代表输入格式可读，不可据此计算或宣称决策准确率。")
         return
     if args.output is None:
         parser.error("正式对照运行必须指定 --output")
