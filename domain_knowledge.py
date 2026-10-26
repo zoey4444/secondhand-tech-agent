@@ -4,12 +4,12 @@ import re
 PLATFORMS = ["闲鱼", "转转", "小红书", "淘宝", "京东", "微信/社交平台", "线下交易", "其他平台"]
 CATEGORIES = ["手机", "平板", "笔记本电脑", "台式电脑/配件", "相机（单反/微单/CCD）", "耳机", "智能手表/手环", "游戏机", "其他数码产品"]
 MODEL_OPTIONS = {
-    "手机": ["Apple iPhone 13", "Apple iPhone 14", "Apple iPhone 15", "Apple iPhone 16", "Samsung Galaxy S 系列", "小米数字系列", "其他型号（手动填写）"],
+    "手机": ["Apple iPhone 13", "Apple iPhone 14", "Apple iPhone 15", "Apple iPhone 16", "Apple iPhone 17", "Apple iPhone 17 Pro", "Apple iPhone 17 Pro Max", "Apple iPhone 18 Pro", "Apple iPhone 18 Pro Max", "Samsung Galaxy S 系列", "小米数字系列", "其他型号（手动填写）"],
     "平板": ["Apple iPad 第9代", "Apple iPad 第10代", "Apple iPad Air 第5代", "Apple iPad mini 第6代", "Samsung Galaxy Tab S9", "小米平板 6", "其他型号（手动填写）"],
     "笔记本电脑": ["Apple MacBook Air M1（2020）", "Apple MacBook Air M2（2022）", "Apple MacBook Pro 14英寸 M1 Pro（2021）", "Lenovo ThinkPad X1 Carbon（需填写代际）", "Dell XPS 13（需填写具体型号）", "其他型号（手动填写）"],
     "台式电脑/配件": ["整机（需填写配置）", "NVIDIA GeForce RTX 3060", "NVIDIA GeForce RTX 4060", "AMD Ryzen 5 5600", "Intel Core i5-12400F", "其他型号（手动填写）"],
     "相机（单反/微单/CCD）": ["Canon EOS R50", "Sony α6400", "Nikon Z50", "Fujifilm X-T30 II", "Canon IXUS 95 IS（CCD）", "Sony Cyber-shot DSC-W830（CCD）", "其他型号（手动填写）"],
-    "耳机": ["Apple AirPods 4 标准版", "Apple AirPods 4 主动降噪版", "Apple AirPods Pro 第2代", "Sony WH-1000XM4", "Sony WH-1000XM5", "Bose QuietComfort Ultra Headphones", "其他型号（手动填写）"],
+    "耳机": ["Apple AirPods 4 标准版", "Apple AirPods 4 主动降噪版", "Apple AirPods 5", "Apple AirPods 5 配无线充电盒", "Apple AirPods Pro 第2代", "Apple AirPods Pro 第3代", "Sony WH-1000XM4", "Sony WH-1000XM5", "Bose QuietComfort Ultra Headphones", "其他型号（手动填写）"],
     "智能手表/手环": ["Apple Watch Series 9", "Apple Watch SE 第2代", "Huawei Watch GT 4", "小米手环 8", "其他型号（手动填写）"],
     "游戏机": ["Nintendo Switch 标准版", "Nintendo Switch OLED", "Nintendo Switch Lite", "PlayStation 5 光驱版", "PlayStation 5 数字版", "Xbox Series X", "Xbox Series S", "其他型号（手动填写）"],
     "其他数码产品": ["其他型号（手动填写）"],

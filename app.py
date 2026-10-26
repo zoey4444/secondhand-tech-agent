@@ -5,6 +5,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from agent_core import run_review, cart_gate
+from market_comparison import compare_prices
 from domain_knowledge import PLATFORMS, CATEGORIES, MODEL_OPTIONS, checklist_for_case, transaction_guidance
 from cart_scene import show_cart_scene
 from image_dialogue import extract_chat_images
@@ -250,21 +251,38 @@ if stage == 3:
                                                step=10.0, format="%.2f", key="journey_price_number",
                                                placeholder="输入数字，例如 420")
                 price = f"{price_number:g}" if price_number is not None else ""
-                st.caption("用于核对商品页、描述和聊天中的价格是否一致；当前不估算外部市场价。")
+                st.caption("会核对不同材料里的价格；填写同款二手报价后，还能看样本价格对比。")
             else:
                 price = "未标价"
                 st.info("智能体会把最终成交价列为待核实项。")
+            sample_prices = st.text_input(
+                "同款二手参考价（选填）", value=st.session_state.get("confirmed_price_samples", ""),
+                placeholder="例如：450，480，500", key="journey_price_samples",
+                help="填 3 至 5 个同型号、容量/版本和成色接近的二手挂牌价，用逗号分隔。")
+            sample_source = st.text_input(
+                "参考来源和查看日期（选填）", value=st.session_state.get("confirmed_price_source", ""),
+                placeholder="例如：闲鱼同款搜索，2026-10-26", key="journey_price_source")
+            sample_preview = compare_prices({"price": price, "price_samples": sample_prices,
+                                             "price_source": sample_source})
+            if sample_preview["status"] == "invalid":
+                st.warning(sample_preview["summary"])
+            elif sample_preview["status"] == "insufficient":
+                st.caption(sample_preview["summary"])
             chat = render_chat_input("initial_chat", "卖家沟通内容（选填）")
         with evidence_right:
             listing = st.text_area("商品标题与描述", height=245, key="journey_listing",
                                    value=st.session_state.get("confirmed_listing", ""),
                                    placeholder="粘贴商品介绍、成色、配件及售后说明；先遮盖姓名、电话、地址和订单号。")
         if st.button("确认线索，拼出商品 →", type="primary", use_container_width=True):
-            if price_mode == "已标价" and not price.strip():
+            if sample_preview["status"] == "invalid":
+                st.warning("请先修正同款二手参考价：输入 3 至 5 个正数，用逗号分隔。")
+            elif price_mode == "已标价" and not price.strip():
                 st.warning("请输入数字标价或选择“未标价”。")
             else:
                 st.session_state.update({"confirmed_price": price.strip(), "confirmed_listing": listing.strip(),
-                                         "confirmed_chat": chat.strip(), "journey_stage": 4, "journey_from": 3})
+                                         "confirmed_chat": chat.strip(), "confirmed_price_samples": sample_prices.strip(),
+                                         "confirmed_price_source": sample_source.strip(),
+                                         "journey_stage": 4, "journey_from": 3})
                 st.rerun()
 elif stage == 4:
     price = st.session_state["confirmed_price"]
@@ -288,7 +306,9 @@ submitted = stage == 4 and st.button("🛒 商品已成形，进入投掷场景"
 
 if submitted:
     current = {"platform": platform, "payment_channel": st.session_state.get("confirmed_payment_channel", "尚未确定"),
-               "category": category, "model": model.strip(), "price": price.strip(), "listing": listing.strip(), "chat": chat.strip()}
+               "category": category, "model": model.strip(), "price": price.strip(), "listing": listing.strip(), "chat": chat.strip(),
+               "price_samples": st.session_state.get("confirmed_price_samples", ""),
+               "price_source": st.session_state.get("confirmed_price_source", "")}
     st.session_state.update(review_case=current, scene_token=uuid.uuid4().hex, analysis_attempted=False,
                             seller_replies=[], review_round=1, decision_change="", review_history=[])
     st.session_state.pop("review_result", None)
@@ -359,6 +379,12 @@ if stage == 4 and "review_result" in st.session_state:
             with st.expander("查看从原文提取的陈述（尚未核实）"):
                 for claim in saved_result["claims"]:
                     st.write(f"{source_label(claim['source'])}：『{claim['quote']}』→ {claim['claim']}")
+    comparison = saved_result.get("price_comparison", {})
+    with st.container(border=True):
+        st.markdown("### 💰 同款二手价格对比")
+        st.write(comparison.get("summary", "没有可用的同款二手参考价，暂时无法判断价格是否接近市价。"))
+        if comparison.get("status") == "compared":
+            st.caption("参考的是你提供的挂牌价样本，实际成交价和机况可能不同；价格差异本身不能证明商品有问题。")
     show_puzzle_feedback(saved_result.get("analysis", ""), saved_result.get("evidence_notes", ""), saved_case, saved_result)
 
     with st.container(border=True, key="seller_reply_stage"):
