@@ -168,6 +168,8 @@ class EvaluationWorkflowTests(unittest.TestCase):
     def test_label_readiness_reports_missing_and_unreviewed_labels(self):
         rows = evaluate.load_cases(ROOT / "evaluation_cases_30.jsonl")
         self.assertEqual(evaluate.label_readiness(rows), (6, 30, 30))
+        candidates = evaluate.load_cases(ROOT / "evaluation_cases_30_candidate.jsonl")
+        self.assertEqual(evaluate.label_readiness(candidates), (30, 30, 30))
 
     def test_loader_rejects_invalid_expected_decision(self):
         item = deepcopy(BASE)

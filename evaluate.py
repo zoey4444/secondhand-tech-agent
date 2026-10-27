@@ -50,6 +50,7 @@ def label_readiness(rows: list[dict]) -> tuple[int, int, int]:
     pending = sum(
         not row.get("label_status")
         or "待人工复核" in str(row.get("label_status", ""))
+        or "待组内复核" in str(row.get("label_status", ""))
         or str(row.get("label_status", "")).startswith("草拟")
         for row in rows
     )
