@@ -514,6 +514,10 @@ def compose_result(state: ReviewState) -> ReviewState:
     known = [f"- 商品展示渠道：{sources['platform'] or '未提供'}。", f"- 下单付款渠道（用户填写）：{sources['payment_channel'] or '未单独填写，以正文陈述为线索'}。", f"- 产品类别与用户填写型号：{sources['category'] or '未提供'}；{sources['model'] or '未提供'}。",
              f"- 用户填写标价：{sources['price'] or '未提供'}。", "- 商品描述与卖家回复均为待核实陈述，不能直接认定为事实。"]
     for claim in state["claims"]:
+        # Structured form fields already appear above as user selections; the
+        # model must not relabel them as seller/material claims a second time.
+        if claim["source"] in {"platform", "payment_channel", "category", "model", "price"}:
+            continue
         known.append(f"- {source_label(claim['source'])}陈述：{claim['claim']}；原文：“{claim['quote']}”。")
     gaps = []
     for issue in state["issues"]:

@@ -9,7 +9,8 @@ def build_input_feedback(case, review):
         value = str(case.get(key) or '').strip()
         related = [i['summary'] for i in review.get('issues', [])
                    if any(e.get('source') == key for e in i.get('evidence', []))]
-        claims = [c['claim'] for c in review.get('claims', []) if c.get('source') == key]
+        claims = [c['claim'] for c in review.get('claims', []) if c.get('source') == key
+                  and key in {'listing', 'chat'} or c.get('source') == key and key.startswith('reply_')]
         feedback = '；'.join(dict.fromkeys(related or claims))
         if not value:
             feedback = '未填写，本轮没有将此项作为判断依据。'
