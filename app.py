@@ -207,18 +207,25 @@ if stage == 2:
         needs_manual = model_choice == "其他型号（手动填写）" or "需填写" in (model_choice or "")
         if needs_manual:
             unknown_series = model_choice == "其他型号（手动填写）"
-            st.caption("先填写已知的品牌和系列；具体代际在下方选择。不清楚时可直接选“不清楚”。" if unknown_series else "上方已选品牌 / 系列；这里只补充具体型号，避免重复填写。代际不清楚可在下方选择“不清楚”。")
-            manual_model = st.text_input("填写品牌 / 型号" if unknown_series else "补充具体型号（选填）",
-                                  placeholder="例如：Apple、Sony 或其他品牌的完整型号" if unknown_series else "例如：XPS 13 9315（不用重复填写 Dell XPS 13）",
-                                  value=st.session_state.get("confirmed_manual_model", ""),
-                                  key=f"manual_model_{category}").strip()
-            generation_status = st.selectbox("具体代际 / 版本", ["已填写在上方", "不清楚"],
-                                             key=f"generation_status_{category}",
-                                             help="已知品牌或系列、但不清楚代际 / 版本时选择“不清楚”，仍会保留上方型号。")
-            base_model = "" if unknown_series else model_choice.replace("（需填写代际）", "").replace("（需填写具体型号）", "")
-            model = manual_model if unknown_series else base_model + (f"；具体型号：{manual_model}" if manual_model else "")
-            if model and generation_status == "不清楚":
-                model = f"{model}；具体代际 / 版本不清楚"
+            if unknown_series:
+                st.caption("选择“其他型号”时，请填写品牌和完整型号。")
+                model = st.text_input("填写品牌 / 型号", placeholder="例如：Apple、Sony 或其他品牌的完整型号",
+                                      value=st.session_state.get("confirmed_manual_model", ""),
+                                      key=f"manual_model_{category}").strip()
+            else:
+                st.caption("品牌 / 系列已由上方型号选择带入；这里只填写具体代际 / 版本，或选择“不清楚”。")
+                base_model = model_choice.replace("（需填写代际）", "").replace("（需填写具体型号）", "")
+                generation_status = st.selectbox("具体代际 / 版本", ["填写具体代际 / 版本", "不清楚"],
+                                                 key=f"generation_status_{category}",
+                                                 help="上方品牌 / 系列会保留；可以输入具体代际 / 版本，也可以选择“不清楚”。")
+                generation_detail = ""
+                if generation_status == "填写具体代际 / 版本":
+                    generation_detail = st.text_input("填写具体代际 / 版本", placeholder="例如：第 12 代、9315、M2（2022）",
+                                                      value=st.session_state.get("confirmed_manual_model", ""),
+                                                      key=f"manual_model_{category}").strip()
+                model = base_model + (f"；具体代际 / 版本：{generation_detail}" if generation_detail else "")
+                if generation_status == "不清楚":
+                    model += "；具体代际 / 版本不清楚"
         else:
             model = model_choice or ""
         model_details = st.text_input("版本 / 容量 / 配置（选填）", placeholder="例如：256GB、降噪版、16GB+512GB",
@@ -234,7 +241,7 @@ if stage == 2:
                 st.session_state["confirmed_category"] = category
                 st.session_state["confirmed_model"] = model
                 st.session_state["confirmed_model_choice"] = model_choice
-                st.session_state["confirmed_manual_model"] = model.split("；")[0] if needs_manual else ""
+                st.session_state["confirmed_manual_model"] = (generation_detail if needs_manual and not unknown_series else model if needs_manual else "")
                 st.session_state["confirmed_model_details"] = model_details.strip()
                 st.session_state["journey_stage"] = 3
                 st.session_state["journey_from"] = 2
