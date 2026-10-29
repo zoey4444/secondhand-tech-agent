@@ -222,7 +222,7 @@ if stage == 2:
                                                  help="直接输入具体代际 / 版本，或打开下拉菜单选择“不清楚”。")
                 generation_detail = (generation_detail or "").strip()
                 model = base_model + (f"；具体代际 / 版本：{generation_detail}" if generation_detail else "")
-                if generation_status == "不清楚":
+                if generation_detail == "不清楚":
                     model += "；具体代际 / 版本不清楚"
         else:
             model = model_choice or ""
