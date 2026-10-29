@@ -207,7 +207,7 @@ if stage == 2:
         needs_manual = model_choice == "其他型号（手动填写）" or "需填写" in (model_choice or "")
         if needs_manual:
             st.caption("先填写已知的品牌和系列；具体代际在下方选择。不清楚时可直接选“不清楚”。")
-            manual_model = st.text_input("② 手动填写品牌 / 系列", placeholder="例如：Lenovo ThinkPad X1 Carbon",
+            manual_model = st.text_input("手动填写品牌 / 系列", placeholder="例如：Lenovo ThinkPad X1 Carbon",
                                   value=st.session_state.get("confirmed_manual_model", "") or (model_choice.replace("（需填写代际）", "").replace("（需填写具体型号）", "") if model_choice and model_choice != "其他型号（手动填写）" else ""),
                                   key=f"manual_model_{category}").strip()
             generation_status = st.selectbox("具体代际 / 版本", ["已填写在上方", "不清楚"],
@@ -226,7 +226,7 @@ if stage == 2:
         st.caption("型号和配置用于核对商品描述、聊天及参考报价是否对应同一件商品；不清楚的内容无需猜测。")
         if st.button("确认型号，让购物车前进 →", type="primary", use_container_width=True):
             if not model.strip():
-                st.warning("请选择已知的品牌 / 系列，或选择“不清楚型号”。如果只是不清楚代际或版本，请保留已知型号并勾选上方选项。")
+                st.warning("请填写或选择已知的品牌 / 系列；如果只是不清楚代际或版本，请在下方“具体代际 / 版本”中选择“不清楚”。")
             else:
                 st.session_state["confirmed_category"] = category
                 st.session_state["confirmed_model"] = model
@@ -450,4 +450,5 @@ if stage == 4 and st.session_state.get("review_history"):
     st.download_button("下载本次核验记录", json.dumps(records, ensure_ascii=False, indent=2),
                        file_name=f"review-{records[0]['run_id'][:8]}.json", mime="application/json", key="download_review")
     st.caption(f"版本 {APP_VERSION} · 已保留本次会话 {len(records)} 次分析记录，含输入、回答和处理状态，便于复核。")
+
 
