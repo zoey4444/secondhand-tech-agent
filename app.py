@@ -215,14 +215,12 @@ if stage == 2:
             else:
                 st.caption("品牌 / 系列已由上方型号选择带入；这里只填写具体代际 / 版本，或选择“不清楚”。")
                 base_model = model_choice.replace("（需填写代际）", "").replace("（需填写具体型号）", "")
-                generation_status = st.selectbox("具体代际 / 版本", ["不清楚"], index=None,
+                generation_detail = st.selectbox("具体代际 / 版本", ["不清楚"], index=None,
                                                  placeholder="填写具体代际 / 版本",
+                                                 accept_new_options=True,
                                                  key=f"generation_status_{category}",
-                                                 help="可以直接填写具体代际 / 版本；不清楚时打开下拉框选择“不清楚”。")
-                generation_detail = "" if generation_status == "不清楚" else st.text_input(
-                    "填写具体代际 / 版本", placeholder="例如：第 12 代、9315、M2（2022）",
-                    value=st.session_state.get("confirmed_manual_model", ""),
-                    key=f"manual_model_{category}").strip()
+                                                 help="直接输入具体代际 / 版本，或打开下拉菜单选择“不清楚”。")
+                generation_detail = (generation_detail or "").strip()
                 model = base_model + (f"；具体代际 / 版本：{generation_detail}" if generation_detail else "")
                 if generation_status == "不清楚":
                     model += "；具体代际 / 版本不清楚"
