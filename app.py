@@ -200,19 +200,22 @@ if stage == 2:
                                 index=CATEGORIES.index(saved_category) if saved_category in CATEGORIES else 0,
                                 key="device_category")
         saved_choice = st.session_state.get("confirmed_model_choice", "")
-        options = [*MODEL_OPTIONS[category], "不清楚型号"]
+        options = [*MODEL_OPTIONS[category]]
         model_choice = st.selectbox("① 从常见型号中选择", options,
                                     index=options.index(saved_choice) if saved_choice in options else None,
                                     placeholder="选择型号，或选手动填写", key=f"device_model_{category}")
-        unknown = st.checkbox("不清楚具体型号（不用展开列表，直接勾选）", key=f"unknown_model_{category}")
-        if unknown:
-            model_choice = "不清楚型号"
         needs_manual = model_choice == "其他型号（手动填写）" or "需填写" in (model_choice or "")
         if needs_manual:
-            st.caption("上面选的是系列或手动填写入口；这里补充已知型号。不知道的部分可写不清楚。")
-            model = st.text_input("② 手动补充型号 / 代际", placeholder="只填你知道的部分，例如 ThinkPad X1 Carbon，代际不清楚",
-                                  value=st.session_state.get("confirmed_manual_model", ""),
+            st.caption("先填写已知的品牌和系列；具体代际在下方选择。不清楚时可直接选“不清楚”。")
+            manual_model = st.text_input("② 手动填写品牌 / 系列", placeholder="例如：Lenovo ThinkPad X1 Carbon",
+                                  value=st.session_state.get("confirmed_manual_model", "") or (model_choice.replace("（需填写代际）", "").replace("（需填写具体型号）", "") if model_choice and model_choice != "其他型号（手动填写）" else ""),
                                   key=f"manual_model_{category}").strip()
+            generation_status = st.selectbox("具体代际 / 版本", ["已填写在上方", "不清楚"],
+                                             key=f"generation_status_{category}",
+                                             help="已知品牌或系列、但不清楚代际 / 版本时选择“不清楚”，仍会保留上方型号。")
+            model = manual_model
+            if model and generation_status == "不清楚":
+                model = f"{model}；具体代际 / 版本不清楚"
         else:
             model = model_choice or ""
         model_details = st.text_input("版本 / 容量 / 配置（选填）", placeholder="例如：256GB、降噪版、16GB+512GB",
@@ -223,7 +226,7 @@ if stage == 2:
         st.caption("型号和配置用于核对商品描述、聊天及参考报价是否对应同一件商品；不清楚的内容无需猜测。")
         if st.button("确认型号，让购物车前进 →", type="primary", use_container_width=True):
             if not model.strip():
-                st.warning("先选一个型号，或手动填写准确型号。")
+                st.warning("请选择已知的品牌 / 系列，或选择“不清楚型号”。如果只是不清楚代际或版本，请保留已知型号并勾选上方选项。")
             else:
                 st.session_state["confirmed_category"] = category
                 st.session_state["confirmed_model"] = model
