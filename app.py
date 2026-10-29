@@ -13,6 +13,7 @@ from product_preview import show_product_preview
 from puzzle_feedback import show_puzzle_feedback
 from review_policy import source_label
 from review_record import APP_VERSION, make_run_record
+from verification_progress import show_verification_progress
 
 load_dotenv()
 
@@ -412,6 +413,7 @@ if stage == 4 and "review_result" in st.session_state:
         if comparison.get("status") == "compared":
             st.caption("参考的是你提供的挂牌价样本，实际成交价和机况可能不同；价格差异本身不能证明商品有问题。")
     show_puzzle_feedback(saved_result.get("analysis", ""), saved_result.get("evidence_notes", ""), saved_case, saved_result)
+    show_verification_progress({**saved_case, "seller_replies": st.session_state.get("seller_replies", [])}, saved_result)
 
     with st.container(border=True, key="seller_reply_stage"):
         st.markdown("### 💌 卖家回复了？把新线索放进来")

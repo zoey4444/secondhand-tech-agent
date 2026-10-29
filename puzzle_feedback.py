@@ -140,9 +140,12 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
             if title == "回复后的变化" and review.get("round_changes"):
                 summary = "\n".join(f"• {item['change']}：{item['summary']}" for item in review["round_changes"])
             elif title == "已知信息":
-                summary += "\n" + "\n".join(f"{source_label(c['source'])}称：{c['claim']}" for c in review.get("claims", [])[:4])
-                if len(review.get("claims", [])) > 4:
-                    summary += f"\n另有 {len(review['claims']) - 4} 条陈述，展开查看。"
+                material_claims = [c for c in review.get("claims", [])
+                                   if c.get("source") in {"listing", "chat"}
+                                   or str(c.get("source", "")).startswith("reply_")]
+                summary += "\n" + "\n".join(f"{source_label(c['source'])}称：{c['claim']}" for c in material_claims[:4])
+                if len(material_claims) > 4:
+                    summary += f"\n另有 {len(material_claims) - 4} 条陈述，展开查看。"
                 payment = (case or {}).get("payment_channel")
                 if payment:
                     summary += f"\n下单付款渠道：{payment}。"
