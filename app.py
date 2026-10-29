@@ -206,14 +206,17 @@ if stage == 2:
                                     placeholder="选择型号，或选手动填写", key=f"device_model_{category}")
         needs_manual = model_choice == "其他型号（手动填写）" or "需填写" in (model_choice or "")
         if needs_manual:
-            st.caption("先填写已知的品牌和系列；具体代际在下方选择。不清楚时可直接选“不清楚”。")
-            manual_model = st.text_input("手动填写品牌 / 系列", placeholder="例如：Lenovo ThinkPad X1 Carbon",
-                                  value=st.session_state.get("confirmed_manual_model", "") or (model_choice.replace("（需填写代际）", "").replace("（需填写具体型号）", "") if model_choice and model_choice != "其他型号（手动填写）" else ""),
+            unknown_series = model_choice == "其他型号（手动填写）"
+            st.caption("先填写已知的品牌和系列；具体代际在下方选择。不清楚时可直接选“不清楚”。" if unknown_series else "上方已选品牌 / 系列；这里只补充具体型号，避免重复填写。代际不清楚可在下方选择“不清楚”。")
+            manual_model = st.text_input("填写品牌 / 型号" if unknown_series else "补充具体型号（选填）",
+                                  placeholder="例如：Apple、Sony 或其他品牌的完整型号" if unknown_series else "例如：XPS 13 9315（不用重复填写 Dell XPS 13）",
+                                  value=st.session_state.get("confirmed_manual_model", ""),
                                   key=f"manual_model_{category}").strip()
             generation_status = st.selectbox("具体代际 / 版本", ["已填写在上方", "不清楚"],
                                              key=f"generation_status_{category}",
                                              help="已知品牌或系列、但不清楚代际 / 版本时选择“不清楚”，仍会保留上方型号。")
-            model = manual_model
+            base_model = "" if unknown_series else model_choice.replace("（需填写代际）", "").replace("（需填写具体型号）", "")
+            model = manual_model if unknown_series else base_model + (f"；具体型号：{manual_model}" if manual_model else "")
             if model and generation_status == "不清楚":
                 model = f"{model}；具体代际 / 版本不清楚"
         else:
