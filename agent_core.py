@@ -11,6 +11,8 @@ from typing import Any, TypedDict
 from review_policy import source_label, STATUS_LABELS, unique_questions, device_question
 from evidence_refs import build_catalog, resolve_reference
 from market_comparison import compare_prices
+from purchase_policy import purchase_blockers
+from input_feedback import build_input_feedback, feedback_text
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
@@ -40,6 +42,7 @@ class ReviewState(TypedDict, total=False):
     analysis: str
     price_comparison: dict[str, Any]
     evidence_notes: str
+    input_feedback: list[dict[str, str]]
     decision: str
     decision_reason: str
     trace: list[str]
@@ -218,6 +221,7 @@ def scan_rules(state: ReviewState) -> ReviewState:
                                       [_evidence(name, match.group())], "请检查原始材料，避免把无关指令当作商品信息。"))
             break
     issues = _apply_price_explanation(issues, sources)
+    issues.extend(purchase_blockers(case, sources))
     notes = "\n".join(issue["summary"] + " " + issue["question"] for issue in issues) or "规则扫描未发现已覆盖的明显冲突；这不代表商品已核实。"
     return {"sources": sources, "missing": missing, "truncated_sources": truncated,
             "conflicts": [i["summary"] for i in issues if i["severity"] == "high"],
@@ -268,6 +272,13 @@ except OSError:
     # Keep deployments bootable if a nested skill file was omitted during upload.
     _seller_skill = SELLER_SKILL_FALLBACK
 SYSTEM_PROMPT += "\n" + _seller_skill
+SYSTEM_PROMPT += """
+购前停止条件：明确的型号/配置、价格、随货权益、售后条件冲突，不能因缺型号细节而忽略。
+同一段材料内的冲突也应分别引用两个原文片段。卖家改口只说明新条件，未同步商品页和订单仍未解决。
+原账号未退出且安排交付后处理、宣传含游戏但账号无法交付，要作为具体交易阻碍。
+显卡明确缺运行证据且拆修未知、长期游泳使用的手环仅口头保证防水，按本应用严格购前标准先停止交易，不能断言设备损坏。
+展示渠道、付款渠道、型号配置、价格、描述和聊天都应参与核对；没有发现冲突时不得编造风险。后续回复逐项说明解决了什么和仍缺什么。
+"""
 
 
 def _extract_json(content: Any) -> dict[str, Any]:
@@ -471,17 +482,18 @@ def validate_evidence(state: ReviewState) -> ReviewState:
 
 
 def decide(state: ReviewState) -> tuple[str, str]:
+    blockers = [i for i in state["issues"] if i["status"] in
+                {"open", "unanswered", "contradicted", "answered_claim_only", "awaiting_independent_evidence"} and
+                (i["kind"] in {"price_conflict", "price_revision", "model_conflict", "purchase_blocker"}
+                 or (i["kind"] == "off_platform" and i["severity"] == "high"))]
+    if blockers:
+        return "reject", "；".join(i["summary"].rstrip("。") for i in blockers[:3]) + "。未解决前先不要付款。"
     if state["missing"]:
         return "wait", "缺少" + "、".join(state["missing"]) + "；请先补齐基本信息。"
     if state["truncated_sources"]:
         return "wait", "部分材料过长未完整进入分析；请裁剪到商品和交易相关内容后重试。"
     if state["model_data"].get("overview") == "模型输出格式异常":
         return "wait", "模型输出未通过结构校验；请重试后再判断。"
-    blockers = [i for i in state["issues"] if i["status"] in {"open", "unanswered", "contradicted"} and
-                (i["kind"] in {"price_conflict", "price_revision", "model_conflict"}
-                 or (i["kind"] == "off_platform" and i["severity"] == "high"))]
-    if blockers:
-        return "reject", "；".join(i["summary"].rstrip("。") for i in blockers[:3]) + "。先确认这些交易条件，再决定是否付款。"
     if state["issues"]:
         actionable = [i for i in state["issues"] if i["kind"] != "injection"]
         return "wait", ("；".join(i["summary"].rstrip("。") for i in actionable[:3]) + "。先补充或核对这些信息。") if actionable else "材料中的无关指令已忽略；还需正常商品资料才能判断。"
@@ -523,6 +535,7 @@ def compose_result(state: ReviewState) -> ReviewState:
                      "仍待核实" if issue["id"] in previous else "本轮新增")
             changes.append({"id": issue["id"], "change": label, "summary": issue["summary"]})
         followup = "## 🔁 回复后的变化\n" + "\n".join(f"- {x['change']}：{x['summary']}" for x in changes) + "\n\n"
+    input_feedback = build_input_feedback(case, state)
     analysis = (followup + "## 🔎 已知信息\n" + "\n".join(known) + "\n\n"
                 + "## 🧩 缺失或矛盾的证据\n" + "\n".join(gaps) + "\n\n"
                 + "## 💬 建议向卖家核实\n" + "\n".join(questions) + "\n\n"
@@ -530,7 +543,8 @@ def compose_result(state: ReviewState) -> ReviewState:
                 + f"## 💰 同款二手价格对比\n{price_comparison['summary']}\n\n"
                 + f"## 🚦 初步风险提示\n{risk}。{reason}\n" + (notice + "\n" if notice else "") + "\n"
                 + "## 🛡️ 判断边界\n本结果只核验用户提交的材料及其中可追溯的原文，不鉴定真伪、不保证交易安全；卖家承诺仍需凭证或实物核查。")
-    return {"analysis": analysis, "price_comparison": price_comparison, "decision": decision, "decision_reason": reason,
+    analysis += "\n\n## 🧭 你填写的信息如何参与判断\n" + feedback_text(input_feedback)
+    return {"input_feedback": input_feedback, "analysis": analysis, "price_comparison": price_comparison, "decision": decision, "decision_reason": reason,
             "analysis_notice": notice, "round_changes": changes,
             "trace": [*state["trace"], f"决策门控：{decision}；优先疑点 {len(state['issues'])} 项。"]}
 

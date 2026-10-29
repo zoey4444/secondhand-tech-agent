@@ -5,6 +5,7 @@ from html import escape
 
 import streamlit.components.v1 as components
 from review_policy import source_label, unique_questions
+from input_feedback import build_input_feedback, feedback_text
 
 
 def split_analysis(analysis: str) -> dict[str, str]:
@@ -124,6 +125,8 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
     ]
     if "回复后的变化" in sections:
         tiles.insert(0, ("回复后的变化", "🔁", "00", "对照上轮疑点看进展"))
+    tiles.append(("填写信息的作用", "🧭", "", "每项输入怎样帮助判断"))
+    sections["填写信息的作用"] = feedback_text((review or {}).get("input_feedback") or build_input_feedback(case or {}, review or {}))
     tile_count = len(tiles)
     rendered = []
     for index, (title, icon, _number, subtitle) in enumerate(tiles, 1):
@@ -131,6 +134,9 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
         if title == "建议向卖家核实" and questions:
             body = questions
         summary = card_summary(title, body, notes, case)
+        if title == "填写信息的作用":
+            rows = (review or {}).get("input_feedback") or build_input_feedback(case or {}, review or {})
+            summary = rows[0]["role"] + "\n" + rows[1]["role"] + "\n展开查看型号、价格、描述和沟通内容的作用与反馈。"
         if review:
             if title == "回复后的变化" and review.get("round_changes"):
                 summary = "\n".join(f"• {item['change']}：{item['summary']}" for item in review["round_changes"])
@@ -151,7 +157,7 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
                 if review.get("error"):
                     summary = "本次分析没有完成，请重新分析当前材料。"
                 elif decision == "reject":
-                    summary = "先不要付款：先解决上面的价格、型号或付款冲突。"
+                    summary = "先不要付款：先解决上面的交易阻碍或关键核验缺口。"
                 elif decision == "allow":
                     summary = "当前材料未见明显异常；付款前仍按清单核对实物和凭证。"
                 else:

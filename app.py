@@ -62,7 +62,7 @@ st.markdown("""
   <div class="hero-sub">对照商品描述和聊天，找出待核实的地方，整理成给卖家的追问；收到答复后，继续更新判断。</div>
 </div>
 """, unsafe_allow_html=True)
-st.caption("分析以你提供的材料为依据，不能鉴定真伪或保证交易安全。购物车展示当前核验状态。")
+st.caption(f"版本 {APP_VERSION} · 分析以你提供的材料为依据，不能鉴定真伪或保证交易安全。购物车展示当前核验状态。")
 with st.expander("提交的文字和截图会怎样使用？"):
     st.write("点击分析时，商品文字和聊天记录会发送给配置的模型服务；截图在点击识别时发送。请先遮盖姓名、电话、地址、账号等个人信息。")
     st.write("应用将当前交易记录保存在本次会话中，不主动写入服务器文件。需要留存时，可自行下载本次核验记录；刷新页面或服务重启可能使会话丢失。")
@@ -80,12 +80,16 @@ def get_api_key() -> str:
 
 def render_chat_input(prefix: str, label: str, height: int = 145) -> str:
     """Allow typed dialogue or screenshot transcription, with an editable OCR draft."""
+    def clear_old_transcript():
+        st.session_state.pop(f"{prefix}_ocr_text", None)
     typed = st.text_area(label, key=f"{prefix}_typed", height=height,
                          placeholder="可以直接粘贴对话文字，也可以上传聊天截图。")
     images = st.file_uploader("上传聊天截图（可选，最多3张）", type=["png", "jpg", "jpeg", "webp"],
-                              accept_multiple_files=True, key=f"{prefix}_images",
+                              accept_multiple_files=True, key=f"{prefix}_images", on_change=clear_old_transcript,
                               help="按聊天顺序选择图片；上传前请遮盖个人信息。")
     if images:
+        if not st.session_state.get(f"{prefix}_ocr_text"):
+            st.info("这些截图尚未转成分析文字。请先点击下方“识别截图中的对话”；直接继续时，图片内容不会参与判断。")
         st.caption(f"已选择 {len(images)} 张截图。先点击识别，再核对下方文字；更换截图后请重新识别。")
         with st.expander("预览已选截图"):
             for image in images[:3]:
@@ -146,6 +150,13 @@ def show_journey(stage: int, from_stage: int) -> None:
     )
 
 
+def reset_product():
+    for key in list(st.session_state):
+        del st.session_state[key]
+
+
+st.button("清空全部，换一件商品", on_click=reset_product,
+          help="清除本次商品信息、截图、卖家回复和核验结果，回到第一步。需要留存时请先下载记录。")
 stage = st.session_state.setdefault("journey_stage", 1)
 from_stage = st.session_state.get("journey_from", stage)
 show_journey(stage, from_stage)
@@ -190,12 +201,16 @@ if stage == 2:
                                 key="device_category")
         saved_choice = st.session_state.get("confirmed_model_choice", "")
         options = [*MODEL_OPTIONS[category], "不清楚型号"]
-        model_choice = st.selectbox("选择具体型号", options,
+        model_choice = st.selectbox("① 从常见型号中选择", options,
                                     index=options.index(saved_choice) if saved_choice in options else None,
                                     placeholder="选择型号，或选手动填写", key=f"device_model_{category}")
+        unknown = st.checkbox("不清楚具体型号（不用展开列表，直接勾选）", key=f"unknown_model_{category}")
+        if unknown:
+            model_choice = "不清楚型号"
         needs_manual = model_choice == "其他型号（手动填写）" or "需填写" in (model_choice or "")
         if needs_manual:
-            model = st.text_input("填写准确型号", placeholder="写上品牌、型号及代际",
+            st.caption("上面选的是系列或手动填写入口；这里补充已知型号。不知道的部分可写不清楚。")
+            model = st.text_input("② 手动补充型号 / 代际", placeholder="只填你知道的部分，例如 ThinkPad X1 Carbon，代际不清楚",
                                   value=st.session_state.get("confirmed_manual_model", ""),
                                   key=f"manual_model_{category}").strip()
         else:
@@ -205,7 +220,7 @@ if stage == 2:
                                       key=f"model_details_{category}")
         if model and model_details.strip():
             model = f"{model}；{model_details.strip()}"
-        st.caption("知道部分型号可手动填写；无法确认时选择“不清楚型号”，无需猜测。")
+        st.caption("型号和配置用于核对商品描述、聊天及参考报价是否对应同一件商品；不清楚的内容无需猜测。")
         if st.button("确认型号，让购物车前进 →", type="primary", use_container_width=True):
             if not model.strip():
                 st.warning("先选一个型号，或手动填写准确型号。")
