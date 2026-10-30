@@ -15,6 +15,8 @@ from review_policy import source_label
 from review_record import APP_VERSION, make_run_record
 from verification_progress import show_verification_progress
 from seller_profile import render_seller_input, show_seller_feedback
+from product_import import render_listing_import
+from material_changes import compare_rounds, show_material_changes
 
 load_dotenv()
 
@@ -165,6 +167,8 @@ show_journey(stage, from_stage)
 st.session_state["journey_from"] = stage
 
 if stage == 1:
+    render_listing_import(get_api_key(), os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+                          os.getenv("DEEPSEEK_VISION_MODEL", "deepseek-flash"))
     with st.container(border=True, key="step_platform"):
         st.markdown("### 🎟️ 第一站 · 选交易场景")
         saved_platform = st.session_state.get("confirmed_platform", PLATFORMS[0])
@@ -380,7 +384,9 @@ if stage == 4 and "review_result" in st.session_state:
     st.markdown(f"### 🧪 第 {st.session_state['review_round']} 轮核验")
     if st.session_state.get("decision_change"):
         st.info(st.session_state["decision_change"])
-    if saved_result.get("round_changes"):
+    if saved_result.get("material_changes"):
+        show_material_changes(saved_result["material_changes"])
+    elif saved_result.get("round_changes"):
         with st.expander("这次答复解决了什么，还缺什么？", expanded=True):
             for change in saved_result["round_changes"]:
                 st.write(f"{change['change']}：{change['summary']}")
@@ -423,10 +429,10 @@ if stage == 4 and "review_result" in st.session_state:
     show_verification_progress({**saved_case, "seller_replies": st.session_state.get("seller_replies", [])}, saved_result)
 
     with st.container(border=True, key="seller_reply_stage"):
-        st.markdown("### 💌 卖家回复了？把新线索放进来")
+        st.markdown("### 💌 补充回复或核验材料，更新判断")
         st.caption("可粘贴卖家回复，或上传聊天截图识别；先遮盖姓名、头像、电话、地址、账号和完整序列号。识别结果可修改，然后再分析。")
-        new_reply = render_chat_input(f"reply_round_{st.session_state['review_round']}", "卖家的新回复")
-        if st.button("🔁 根据卖家回复重新分析", key="analyze_seller_reply", type="primary", use_container_width=True):
+        new_reply = render_chat_input(f"reply_round_{st.session_state['review_round']}", "新回复或补充材料（请注明来源）")
+        if st.button("🔁 根据补充材料重新分析", key="analyze_seller_reply", type="primary", use_container_width=True):
             if not new_reply.strip():
                 st.warning("先粘贴卖家的回复，或上传截图并点击‘识别截图中的对话’。")
             else:
@@ -438,6 +444,8 @@ if stage == 4 and "review_result" in st.session_state:
                 }
                 with st.spinner("正在对照上一轮疑点，检查新回复……"):
                     followup_result = review_case(followup_case)
+                if not followup_result.get("error"):
+                    followup_result["material_changes"] = compare_rounds(saved_result, followup_result, new_reply.strip())
                 st.session_state.setdefault("review_history", []).append(make_run_record(
                     followup_case, followup_result, os.getenv("DEEPSEEK_MODEL", "deepseek-flash"), st.session_state["review_round"] + 1))
                 if followup_result.get("error"):

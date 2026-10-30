@@ -11,7 +11,7 @@ STATUS_LABELS = {
 
 def source_label(name):
     if name.startswith("reply_"):
-        return f"第 {name.split('_')[-1]} 次卖家回复"
+        return f"第 {name.split('_')[-1]} 次补充材料"
     return {"platform": "展示渠道", "payment_channel": "下单付款渠道",
             "model": "所填型号", "category": "品类", "price": "所填标价",
             "listing": "商品描述", "chat": "聊天记录", "seller_profile": "用户提供的卖家主页材料"}.get(name, "提交材料")
