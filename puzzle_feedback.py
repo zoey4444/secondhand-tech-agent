@@ -141,7 +141,7 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
                 summary = "\n".join(f"• {item['change']}：{item['summary']}" for item in review["round_changes"])
             elif title == "已知信息":
                 material_claims = [c for c in review.get("claims", [])
-                                   if c.get("source") in {"listing", "chat"}
+                                   if c.get("source") in {"listing", "chat", "seller_profile"}
                                    or str(c.get("source", "")).startswith("reply_")]
                 summary += "\n" + "\n".join(f"{source_label(c['source'])}称：{c['claim']}" for c in material_claims[:4])
                 if len(material_claims) > 4:

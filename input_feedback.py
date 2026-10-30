@@ -10,7 +10,7 @@ def build_input_feedback(case, review):
         related = [i['summary'] for i in review.get('issues', [])
                    if any(e.get('source') == key for e in i.get('evidence', []))]
         claims = [c['claim'] for c in review.get('claims', []) if c.get('source') == key
-                  and key in {'listing', 'chat'} or c.get('source') == key and key.startswith('reply_')]
+                  and key in {'listing', 'chat', 'seller_profile'} or c.get('source') == key and key.startswith('reply_')]
         feedback = '；'.join(dict.fromkeys(related or claims))
         if not value:
             feedback = '未填写，本轮没有将此项作为判断依据。'
@@ -31,6 +31,8 @@ def build_input_feedback(case, review):
     add('price', '商品标价', '用于对照描述、聊天中的成交价。' + price['summary'])
     add('listing', '商品描述', '提取成色、功能、维修、配件和售后承诺，逐项与聊天核对；卖家描述仍是待核实陈述。')
     add('chat', '聊天与截图识别文字', '用于发现补充说明、改口或未回答的问题；截图须先识别并核对文字，未经识别的图片未进入本次分析。')
+    if case.get('seller_profile'):
+        add('seller_profile', '卖家主页与评价', '核对账号对应关系与评价背景；评价不等于成交，好评不证明本件商品安全，其他交易评价不直接证明本件故障。')
     add('price_samples', '同款参考报价', price['summary'])
     add('price_source', '参考来源及查看日期', '用于标记参考报价出处和查看时间；内容由用户提供，未联网核实。' + price['summary'])
     for index, reply in enumerate(case.get('seller_replies') or [], 1):

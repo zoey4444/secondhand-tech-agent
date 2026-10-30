@@ -14,6 +14,7 @@ from puzzle_feedback import show_puzzle_feedback
 from review_policy import source_label
 from review_record import APP_VERSION, make_run_record
 from verification_progress import show_verification_progress
+from seller_profile import render_seller_input, show_seller_feedback
 
 load_dotenv()
 
@@ -300,6 +301,9 @@ if stage == 3:
             listing = st.text_area("商品标题与描述", height=245, key="journey_listing",
                                    value=st.session_state.get("confirmed_listing", ""),
                                    placeholder="粘贴商品介绍、成色、配件及售后说明；先遮盖姓名、电话、地址和订单号。")
+        seller_profile = render_seller_input(
+            get_api_key(), os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+            os.getenv("DEEPSEEK_VISION_MODEL", "deepseek-flash"))
         if st.button("确认线索，拼出商品 →", type="primary", use_container_width=True):
             if sample_preview["status"] == "invalid":
                 st.warning("请先修正同款二手参考价：输入 3 至 5 个正数，用逗号分隔。")
@@ -309,6 +313,7 @@ if stage == 3:
                 st.session_state.update({"confirmed_price": price.strip(), "confirmed_listing": listing.strip(),
                                          "confirmed_chat": chat.strip(), "confirmed_price_samples": sample_prices.strip(),
                                          "confirmed_price_source": sample_source.strip(),
+                                         "confirmed_seller_profile": seller_profile,
                                          "journey_stage": 4, "journey_from": 3})
                 st.rerun()
 elif stage == 4:
@@ -335,7 +340,8 @@ if submitted:
     current = {"platform": platform, "payment_channel": st.session_state.get("confirmed_payment_channel", "尚未确定"),
                "category": category, "model": model.strip(), "price": price.strip(), "listing": listing.strip(), "chat": chat.strip(),
                "price_samples": st.session_state.get("confirmed_price_samples", ""),
-               "price_source": st.session_state.get("confirmed_price_source", "")}
+               "price_source": st.session_state.get("confirmed_price_source", ""),
+               "seller_profile": st.session_state.get("confirmed_seller_profile", "")}
     st.session_state.update(review_case=current, scene_token=uuid.uuid4().hex, analysis_attempted=False,
                             seller_replies=[], review_round=1, decision_change="", review_history=[])
     st.session_state.pop("review_result", None)
@@ -413,6 +419,7 @@ if stage == 4 and "review_result" in st.session_state:
         if comparison.get("status") == "compared":
             st.caption("参考的是你提供的挂牌价样本，实际成交价和机况可能不同；价格差异本身不能证明商品有问题。")
     show_puzzle_feedback(saved_result.get("analysis", ""), saved_result.get("evidence_notes", ""), saved_case, saved_result)
+    show_seller_feedback(saved_case)
     show_verification_progress({**saved_case, "seller_replies": st.session_state.get("seller_replies", [])}, saved_result)
 
     with st.container(border=True, key="seller_reply_stage"):

@@ -25,7 +25,7 @@ DIMENSIONS = (
 STATUSES = {'pending': '待核验', 'claim': '仅有陈述', 'conflict': '存在未解决的矛盾',
             'checked': '已核对并记录结果', 'problem': '已核对，发现问题'}
 CASE_KEYS = ('platform', 'payment_channel', 'category', 'model', 'price', 'listing', 'chat',
-             'price_samples', 'price_source', 'seller_replies')
+             'price_samples', 'price_source', 'seller_replies', 'seller_profile')
 
 
 def case_fingerprint(case):

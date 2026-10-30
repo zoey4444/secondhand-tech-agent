@@ -2,9 +2,9 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-APP_VERSION = "2.6.0"
+APP_VERSION = "2.6.1"
 INPUT_FIELDS = ("platform", "payment_channel", "category", "model", "price", "listing", "chat",
-                "seller_replies", "previous_issues", "price_samples", "price_source")
+                "seller_replies", "previous_issues", "price_samples", "price_source", "seller_profile")
 OUTPUT_FIELDS = ("decision", "decision_reason", "analysis", "analysis_notice", "issues", "claims",
                  "input_feedback", "questions", "round_changes", "price_comparison", "error")
 DIAGNOSTIC_FIELDS = ("invalid_citations", "validation_errors", "initial_validation_errors",
