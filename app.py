@@ -163,6 +163,10 @@ st.button("清空全部，换一件商品", on_click=reset_product,
           help="清除本次商品信息、截图、卖家回复和核验结果，回到第一步。需要留存时请先下载记录。")
 stage = st.session_state.setdefault("journey_stage", 1)
 from_stage = st.session_state.get("journey_from", stage)
+if stage == 4 and st.session_state.get("imported_from_screenshot"):
+    st.info("商品截图已识别，可直接投掷分析。识别内容尚未核实；如有错误，可点下方修改。付款渠道未自动确定。")
+    if st.session_state.get("product_import_note"):
+        st.caption("价格识别说明：" + st.session_state["product_import_note"])
 show_journey(stage, from_stage)
 st.session_state["journey_from"] = stage
 
@@ -326,7 +330,7 @@ elif stage == 4:
     chat = st.session_state["confirmed_chat"]
     with st.container(border=True, key="step_evidence"):
         st.markdown("### ✅ 第三站 · 商品线索已贴好")
-        price_caption = "未标价，需核实最终成交价" if price == "未标价" else f"标价 ¥{price}"
+        price_caption = "价格待核实" if not price or price == "未标价" else f"标价 ¥{price}"
         st.caption(f"{price_caption} · {'商品描述已填写' if listing else '暂无商品描述，将列为待补信息'}")
         if st.button("修改价格或描述", key="edit_evidence"):
             st.session_state.pop("review_result", None)
@@ -337,8 +341,8 @@ else:
     price, listing, chat = "", "", ""
 
 show_product_preview(category, model, platform, price, listing)
-st.progress((stage - 1) / 3, text=f"✨ 已确认 {stage - 1} / 3 站")
-submitted = stage == 4 and st.button("🛒 商品已成形，进入投掷场景", type="primary", use_container_width=True)
+st.progress((stage - 1) / 3, text="✨ 截图已导入，可投掷分析" if st.session_state.get("imported_from_screenshot") and stage == 4 else f"✨ 已确认 {stage - 1} / 3 站")
+submitted = stage == 4 and "scene_token" not in st.session_state and st.button("🛒 商品已成形，进入投掷场景", type="primary", use_container_width=True)
 
 if submitted:
     current = {"platform": platform, "payment_channel": st.session_state.get("confirmed_payment_channel", "尚未确定"),

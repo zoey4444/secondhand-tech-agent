@@ -17,6 +17,28 @@ def purchase_blockers(case, sources):
             result.append(dict(id='purchase-' + hashlib.sha1(topic.encode()).hexdigest()[:8],
                 kind='purchase_blocker', severity='high', summary=summary, evidence=evidence,
                 question=question, status='open', origin='程序检查', topic=topic))
+    # Require both explicit imitation indicators in the current listing, plus a
+    # brand shared by the selected model and listing. Reviews do not qualify.
+    def listing_assertion(pattern):
+        for entry in excerpts:
+            if entry['source'] != 'listing':
+                continue
+            match = re.search(pattern, entry['quote'], re.I)
+            if match and not re.search(r'不|并非|拒绝|避免|非', entry['quote'][:match.start()]):
+                return entry
+        return None
+    selected = str(case.get('model', ''))
+    brands = (r'Sony|索尼', r'Apple|苹果', r'Samsung|三星', r'Bose', r'Canon|佳能', r'Nikon|尼康')
+    for brand in brands:
+        if not re.search(brand, selected, re.I):
+            continue
+        brand_evidence = listing_assertion(brand)
+        imitation = listing_assertion(r'外观\s*1\s*[:：]\s*1')
+        diy = listing_assertion(r'贴纸.{0,12}(?:DIY|自己.{0,4}(?:贴|动手))')
+        add('imitation_identity', '品牌型号标注与正文的仿制外观、贴纸DIY描述不一致，不能按该品牌原装商品购买；先确认实际商品身份。',
+            [brand_evidence, imitation, diy],
+            '正文写的外观1:1和贴纸DIY是什么意思？这件是否为所标品牌原装商品？请明确实际品牌和型号。')
+        break
     # Require an explicit contrast between title and details, not two optional configurations.
     a, b = find(r'标题.*\d+\s*G[B]?\s*\+\s*\d+'), find(r'详情.*\d+\s*G[B]?\s*\+\s*\d+')
     if a and b:

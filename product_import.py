@@ -1,6 +1,7 @@
-"""User-confirmed listing screenshot import; no automatic evidence verification."""
+"""Listing screenshot import directly into toss scene; no evidence verification."""
 import json
 import math
+import uuid
 import re
 from domain_knowledge import PLATFORMS, CATEGORIES, MODEL_OPTIONS
 
@@ -65,17 +66,24 @@ def apply_listing(state, data):
     # Import starts a new product; preserve API/config, discard old product state.
     state.clear()
     category = clean['category'] or '其他数码产品'
-    platform = clean['platform'] or '其他平台'
-    state.update(journey_stage=1, confirmed_platform=platform, confirmed_category=category,
+    platform = clean['platform']
+    state.update(journey_stage=4, journey_from=1, confirmed_platform=platform, confirmed_category=category,
                  confirmed_model_choice=clean['model'] if clean['model'] in MODEL_OPTIONS[category] else '其他型号（手动填写）',
                  confirmed_manual_model=clean['model'], confirmed_model_details=clean['details'],
                  confirmed_price=clean['price'], confirmed_listing=clean['listing'],
-                 confirmed_payment_channel='尚未确定', product_import_note=clean['price_note'])
+                 confirmed_payment_channel='尚未确定', product_import_note=clean['price_note'],
+                 confirmed_model='；'.join(v for v in (clean['model'], clean['details']) if v),
+                 confirmed_chat='', imported_from_screenshot=True)
+    current = dict(platform=platform, payment_channel='尚未确定', category=category,
+                   model=state['confirmed_model'], price=clean['price'], listing=clean['listing'],
+                   chat='', price_samples='', price_source='', seller_profile='')
+    state.update(review_case=current, scene_token=uuid.uuid4().hex, analysis_attempted=False,
+                 seller_replies=[], review_round=1, decision_change='', review_history=[])
 
 
 def render_listing_import(api_key, base_url, model):
     import streamlit as st
-    with st.expander('📷 有商品页截图？识别后自动填表', expanded=True):
+    with st.expander('📷 上传商品页，识别后直接投掷', expanded=True):
         st.caption('可跳过截图直接填写。导入会开始一件新商品并清除上一件记录，请先下载需保留的内容。')
         def clear_draft():
             for key in list(st.session_state):
@@ -88,29 +96,9 @@ def render_listing_import(api_key, base_url, model):
             try:
                 with st.spinner('正在读取商品型号、标价与描述……'):
                     data = extract_listing(files, api_key, base_url, model)
-                st.session_state['listing_ocr_ready'] = True
-                for key, value in data.items():
-                    st.session_state['listing_ocr_' + key] = value
+                apply_listing(st.session_state, data)
+                st.rerun()
             except ValueError as exc:
                 st.warning(str(exc))
             except Exception:
                 st.warning('图片识别未完成，请检查图片模型配置或使用下方手动填写。')
-        if st.session_state.get('listing_ocr_ready'):
-            st.caption('请核对后导入；识别并不证明商品信息真实。无法辨认的项目留空，随后补填。')
-            data = {}
-            for key, label in [('platform','展示平台'), ('category','商品类别')]:
-                options = [''] + (PLATFORMS if key == 'platform' else CATEGORIES)
-                data[key] = st.selectbox(label, options, key='listing_ocr_' + key,
-                                         format_func=lambda x: x or '未识别，请选择')
-            for key, label in [('model','品牌和型号'), ('details','代际／容量／配置'), ('price','当前商品标价（元）')]:
-                data[key] = st.text_input(label, key='listing_ocr_' + key)
-            data['listing'] = st.text_area('商品标题和正文', key='listing_ocr_listing', height=180)
-            data['price_note'] = st.session_state.get('listing_ocr_price_note', '')
-            if data['price_note']:
-                st.info('识别时的价格说明：' + data['price_note'])
-            if st.button('已核对，自动填入下方表单', type='primary'):
-                try:
-                    apply_listing(st.session_state, data)
-                    st.rerun()
-                except ValueError as exc:
-                    st.warning(str(exc))
