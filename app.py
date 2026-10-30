@@ -17,6 +17,7 @@ from verification_progress import show_verification_progress
 from seller_profile import render_seller_input, show_seller_feedback
 from product_import import render_listing_import, start_imported_review
 from material_changes import compare_rounds, show_material_changes
+from review_report import show_report_download
 
 load_dotenv()
 
@@ -436,7 +437,9 @@ if stage == 4 and "review_result" in st.session_state:
             st.caption("参考的是你提供的挂牌价样本，实际成交价和机况可能不同；价格差异本身不能证明商品有问题。")
     show_puzzle_feedback(saved_result.get("analysis", ""), saved_result.get("evidence_notes", ""), saved_case, saved_result)
     show_seller_feedback(saved_case)
-    show_verification_progress({**saved_case, "seller_replies": st.session_state.get("seller_replies", [])}, saved_result)
+    report_case = {**saved_case, "seller_replies": st.session_state.get("seller_replies", [])}
+    current_progress = show_verification_progress(report_case, saved_result)
+    show_report_download(report_case, saved_result, current_progress, st.session_state.get("review_history", []))
 
     with st.container(border=True, key="seller_reply_stage"):
         st.markdown("### 💌 补充回复或核验材料，更新判断")
@@ -475,7 +478,7 @@ if stage == 4 and "review_result" in st.session_state:
                     st.session_state["decision_change"] = change
                     st.rerun()
     if st.session_state["seller_replies"]:
-        with st.expander(f"查看已提交的 {len(st.session_state['seller_replies'])} 次卖家回复"):
+        with st.expander(f"查看已提交的 {len(st.session_state['seller_replies'])} 次补充材料"):
             for index, reply in enumerate(st.session_state["seller_replies"], 1):
                 st.markdown(f"**第 {index} 次回复**")
                 st.text(reply)
