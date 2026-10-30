@@ -15,7 +15,7 @@ from review_policy import source_label
 from review_record import APP_VERSION, make_run_record
 from verification_progress import show_verification_progress
 from seller_profile import render_seller_input, show_seller_feedback
-from product_import import render_listing_import
+from product_import import render_listing_import, start_imported_review
 from material_changes import compare_rounds, show_material_changes
 
 load_dotenv()
@@ -270,6 +270,11 @@ else:
 if stage == 3:
     with st.container(border=True, key="step_evidence"):
         st.markdown("### 🧷 第三站 · 为商品贴上线索")
+        if st.session_state.get("imported_from_screenshot") and st.session_state.get("needs_seller_prompt"):
+            st.info("未确认收到独立的卖家主页截图。你可以在下面选填卖家主页／评价截图；不填也可以继续，页面底部有‘跳过卖家信息，直接投掷’。")
+        seller_profile = render_seller_input(
+            get_api_key(), os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+            os.getenv("DEEPSEEK_VISION_MODEL", "deepseek-flash"))
         evidence_left, evidence_right = st.columns([0.8, 1.2], gap="large")
         with evidence_left:
             saved_price = str(st.session_state.get("confirmed_price", "")).strip()
@@ -309,20 +314,21 @@ if stage == 3:
             listing = st.text_area("商品标题与描述", height=245, key="journey_listing",
                                    value=st.session_state.get("confirmed_listing", ""),
                                    placeholder="粘贴商品介绍、成色、配件及售后说明；先遮盖姓名、电话、地址和订单号。")
-        seller_profile = render_seller_input(
-            get_api_key(), os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
-            os.getenv("DEEPSEEK_VISION_MODEL", "deepseek-flash"))
-        if st.button("确认线索，拼出商品 →", type="primary", use_container_width=True):
+        save_evidence = st.button("保存并进入投掷" if st.session_state.get("imported_from_screenshot") else "确认线索，拼出商品 →", type="primary", use_container_width=True)
+        skip_seller = st.button("跳过卖家信息，直接投掷") if st.session_state.get("imported_from_screenshot") else False
+        if save_evidence or skip_seller:
             if sample_preview["status"] == "invalid":
                 st.warning("请先修正同款二手参考价：输入 3 至 5 个正数，用逗号分隔。")
-            elif price_mode == "已标价" and not price.strip():
+            elif price_mode == "已标价" and not price.strip() and not st.session_state.get("imported_from_screenshot"):
                 st.warning("请输入数字标价或选择“未标价”。")
             else:
                 st.session_state.update({"confirmed_price": price.strip(), "confirmed_listing": listing.strip(),
                                          "confirmed_chat": chat.strip(), "confirmed_price_samples": sample_prices.strip(),
                                          "confirmed_price_source": sample_source.strip(),
-                                         "confirmed_seller_profile": seller_profile,
+                                         "confirmed_seller_profile": "" if skip_seller else seller_profile,
                                          "journey_stage": 4, "journey_from": 3})
+                if st.session_state.get("imported_from_screenshot"):
+                    start_imported_review(st.session_state)
                 st.rerun()
 elif stage == 4:
     price = st.session_state["confirmed_price"]
