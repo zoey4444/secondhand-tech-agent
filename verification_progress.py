@@ -1,6 +1,7 @@
 """Literature-informed, user-recorded verification coverage; never a risk score."""
 import hashlib
 import json
+import re
 
 METHOD_VERSION = '1.0'
 REFERENCE = 'https://iiardjournals.org/get/IJSSMR/VOL.%2012%20NO.%201%202026/Identifying%20and%20Quantifying%20Weights%2048-60.pdf'
@@ -66,7 +67,7 @@ def calculate_progress(entries=None):
                 dimensions=rows, next_checks=suggestions[:3], problems=problems)
 
 
-def show_verification_progress(case, review):
+def _show_manual_verification(case, review):
     import streamlit as st
     fingerprint = case_fingerprint(case)
     prefix = f'verify_{fingerprint}_'
@@ -120,4 +121,55 @@ def show_verification_progress(case, review):
                   model_decision=review.get('decision'), model_reason=review.get('decision_reason'))
     st.download_button('下载五部分核验记录', json.dumps(export, ensure_ascii=False, indent=2),
                        file_name=f'verification-{fingerprint[:8]}.json', mime='application/json', key=prefix + 'download')
+    return result
+
+
+def material_score(case, entries=None):
+    """Material presence score, not verification or predictive risk probability."""
+    entries = entries or {}
+    known = lambda value: bool(str(value or '').strip()) and not any(x in str(value) for x in ('不清楚','未提供','尚未确定','未知'))
+    profile = str(case.get('seller_profile') or '')
+    # Only explicit material availability is automated, not factual correctness.
+    signals = {
+        'identity': (known(case.get('model')), '已提供具体型号文字，尚未证明型号真实'),
+        'condition': (bool(str(case.get('listing') or '').strip()), '已提供商品描述，尚未证明成色与功能'),
+        'account': ('对应关系（用户填写）：已对照为同一账号' in profile, '用户已记录账号对应关系'),
+        'reviews': (bool(re.search(r'(?:评价总数|来自买家的评价数|明确标注的卖出成交数)：\d', profile)), '已提供评价或成交数量，未向平台核实'),
+        'order': (known(case.get('platform')), '已提供展示渠道，尚未核实订单对应关系'),
+        'payment_terms': (known(case.get('payment_channel')), '已提供付款渠道，尚未核实付款条件'),
+    }
+    total=sum(d[2] for d in DIMENSIONS)
+    rows=[]
+    for _, label, raw, checks in DIMENSIONS:
+        items=[]
+        for key,title in checks:
+            entry=entries.get(key,{})
+            manual=entry.get('status') in {'checked','problem'} and bool(str(entry.get('note') or '').strip())
+            present, explanation=signals.get(key,(False,'尚无可计入的核对记录'))
+            items.append(dict(title=title,present=bool(present or manual),
+                              reason=('用户保存的核对记录：'+str(entry['note'])) if manual else explanation if present else '资料不足／尚未记录核对依据'))
+        fraction=sum(i['present'] for i in items)/len(items)
+        rows.append(dict(label=label,weight=raw/total,fraction=fraction,items=items))
+    return dict(score=100*sum(x['weight']*x['fraction'] for x in rows),dimensions=rows,
+                meaning='资料覆盖评分，不是交易安全分。自动填入的文字也计作资料，未证明真实性。')
+
+
+def show_verification_progress(case, review):
+    import streamlit as st
+    fingerprint=case_fingerprint(case)
+    entries=st.session_state.get('verification_records',{}).get(fingerprint,{})
+    # Render the form first so a save updates this run's score and report together.
+    with st.expander('拼图评分明细与核对记录（点击展开）',expanded=False):
+        result=_show_manual_verification(case,review)
+    entries=st.session_state.get('verification_records',{}).get(fingerprint,{})
+    score=material_score(case,entries)
+    st.metric('拼图资料评分', f"{score['score']:.1f} / 100")
+    st.caption('已提交的资料会自动计分；检测与售后等部分需保存核对依据。分数反映资料覆盖，不代表安全或真伪。')
+    with st.expander('查看评分依据',expanded=False):
+        st.caption('沿用文献参考权重；资料映射与维度内等权是本项目原型规则，未经实证校准。没有材料不猜测，发现问题仍可能有资料分。')
+        for row in score['dimensions']:
+            st.write(f"{row['label']}：{row['fraction']*100:.0f}分，权重{row['weight']:.2%}")
+            for item in row['items']:
+                st.caption(item['title']+'：'+item['reason'])
+    result['material_score']=score
     return result

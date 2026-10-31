@@ -167,24 +167,13 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
         if title == "建议向卖家核实" and questions:
             body = questions
         summary = card_summary(title, body, notes, case)
-        if title == '已知信息':
-            filled = sum(bool((case or {}).get(k)) for k in ('platform','payment_channel','category','model','price','listing','chat','seller_profile'))
-            summary = f"已填信息：共{filled}项\n提取陈述：共{len((review or {}).get('claims', []))}条"
-        elif title == '缺失或矛盾':
+        if title == '缺失或矛盾':
             if review is not None:
                 summary, body = issue_overview(review.get('issues', []))
                 if review.get('analysis_notice') or review.get('error'):
                     summary += '\n分析未完整完成，请展开核对。'
             else:
                 summary = '问题数量待确认，展开查看原文。'
-        elif title == '建议向卖家核实':
-            summary = f"建议追问：共{len(questions.splitlines()) if questions else 0}条"
-        elif title == '验货清单':
-            items = [x.strip(' -•') for x in re.split(r'[；;\n]+', body) if x.strip(' -•')]
-            summary = f'验货事项：共{len(items)}项' if title in sections else '验货事项待补充'
-        elif title == '回复后的变化':
-            changes = (review or {}).get('round_changes', [])
-            summary = f'本轮变化：共{len(changes)}项' if changes else '展开对照本轮变化'
         question_button = '<button class="pz-copy" id="copySeller" type="button">📋 一键复制给卖家</button><span id="copyStatus" class="pz-copy-status" aria-live="polite"></span>' if title == "建议向卖家核实" and questions else ""
         rendered.append(
             f'<article class="pz-tile {"pz-question" if title == "建议向卖家核实" else ""}">'
@@ -220,7 +209,7 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
 @media(max-width:960px){.pz-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pz-tile:nth-child(3n):after{top:48%;right:-17px;bottom:auto}.pz-tile:nth-child(2n):after{top:auto;right:42%;bottom:-17px}}
 @media(max-width:600px){.pz-grid{grid-template-columns:1fr}.pz-tile{min-height:205px}.pz-tile:after,.pz-tile:nth-child(2n):after{top:auto;right:42%;bottom:-17px}.pz-head{display:block}.pz-head p{margin-top:8px}}
 @media(prefers-reduced-motion:reduce){.pz-tile{animation:none;transition:none}}
-</style></head><body><div class="pz-shell"><div class="pz-head"><div><div class="pz-kicker">REVIEW PUZZLE · 先看数量，展开看详情</div><h2>🧩 商品核验拼图</h2></div><p>优先核实属于问题子集，不与分类数量相加。</p></div>
+</style></head><body><div class="pz-shell"><div class="pz-head"><div><div class="pz-kicker">REVIEW PUZZLE · 查看结论与核验依据</div><h2>🧩 商品核验拼图</h2></div><p>优先核实属于问题子集，不与分类数量相加。</p></div>
 __ANALYSIS_NOTICE__<div class="pz-grid">__TILES__</div>
 <section class="pz-panel" id="detailPanel" hidden tabindex="-1"><div class="pz-panel-head"><div><div class="pz-panel-kicker">当前选中的拼图</div><h3 id="panelTitle"></h3></div><button class="pz-close" id="closePanel" type="button">收起 ↑</button></div><p class="pz-panel-summary" id="panelSummary"></p><div class="pz-panel-label" id="panelLabel">补充说明</div><div class="pz-panel-body" id="panelBody"></div></section>
 __TIPS__

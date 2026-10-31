@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-APP_VERSION = "2.7.0"
+APP_VERSION = "2.7.2"
 INPUT_FIELDS = ("platform", "payment_channel", "category", "model", "price", "listing", "chat",
                 "seller_replies", "previous_issues", "price_samples", "price_source", "seller_profile")
 OUTPUT_FIELDS = ("decision", "decision_reason", "analysis", "analysis_notice", "issues", "claims",
