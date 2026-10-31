@@ -183,7 +183,7 @@ def show_seller_feedback(case):
     source = case.get('seller_profile', '')
     if not source:
         return
-    with st.expander('卖家主页信息如何参与本轮分析', expanded=True):
+    with st.expander('卖家主页信息如何参与本轮分析', expanded=False):
         for note in profile_feedback(source):
             st.write('• ' + note)
         st.text(source)

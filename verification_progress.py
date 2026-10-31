@@ -112,11 +112,6 @@ def show_verification_progress(case, review):
             st.write(f"• {item['title']}：{item['note'] or '尚未记录依据'}")
     if review.get('decision') == 'reject':
         st.warning('优先处理上方停止交易的原因，完成度不会抵消该判断。')
-    if result['next_checks']:
-        st.markdown('**接下来可补充**')
-        st.caption('先处理上方风险和关键疑问；以下按参考权重排列未完成项。')
-        for item in result['next_checks']:
-            st.write('• ' + item['title'])
     with st.expander('计算方法与适用边界'):
         st.write('从闲鱼满意度研究选取五项指标，按上层权重乘下层权重后重新归一化。它们是探索性的核验参考权重，不是风险概率。每部分的两项检查暂按等权处理，这是项目设计，未经过问卷验证。')
         st.write('没有材料、仅有陈述和未解决矛盾不计完成。没有报告仍保留在分母中。补充回复或修改商品资料后，需针对新材料重新记录进度，避免沿用旧结论；已下载的历史记录可保留对照。')

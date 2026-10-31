@@ -9,7 +9,7 @@ def compare_prices(case: dict) -> dict:
     raw = str(case.get("price_samples") or "").strip()
     if not raw:
         return {"status": "not_provided",
-                "summary": "还没有同款二手参考价，暂时无法判断标价是否接近市价。"}
+                "summary": "还没有同款二手参考价，暂时无法判断标价与同款挂牌样本的差异。"}
     parts = [part.strip() for part in re.split(r"[,，;；\s]+", raw) if part.strip()]
     if len(parts) > 5 or any(not re.fullmatch(r"[￥¥]?\d+(?:\.\d{1,2})?", part) for part in parts):
         return {"status": "invalid", "summary": "参考价请填 3 至 5 个正数，用逗号分隔，例如 450，480，500。"}
@@ -26,12 +26,7 @@ def compare_prices(case: dict) -> dict:
     listed = float(listed_raw)
     midpoint = median(samples)
     difference = (listed / midpoint - 1) * 100
-    if difference <= -20:
-        label = "低于这组样本"
-    elif difference >= 20:
-        label = "高于这组样本"
-    else:
-        label = "接近这组样本"
+    label = '低于样本中位数' if difference < 0 else '高于样本中位数' if difference > 0 else '等于样本中位数'
     source = str(case.get("price_source") or "").strip()[:180]
     origin = f"来源和查看日期：{source}。" if source else "未注明样本来源和查看日期，参考性有限。"
     summary = (f"商品标价 {listed:g} 元；你提供的 {len(samples)} 条同款二手挂牌价"

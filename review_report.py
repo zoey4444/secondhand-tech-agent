@@ -1,5 +1,6 @@
 """A single portable snapshot of the displayed analysis and user checklist."""
 from copy import deepcopy
+from next_actions import next_actions
 from review_record import APP_VERSION, INPUT_FIELDS, OUTPUT_FIELDS
 from review_policy import source_label, STATUS_LABELS
 from verification_progress import case_fingerprint, STATUSES
@@ -64,11 +65,11 @@ def build_report(case, review, progress, history=()):
         lines.append('本轮新增材料：'+changes.get('new_material',''))
         lines += [f"{item['label']}：{item['summary']}" for item in changes.get('changes',[])]
     else:lines.append('本轮没有可对照的补充材料变化记录。')
+    lines += ['', '同款挂牌价参考', str((review.get('price_comparison') or {}).get('summary') or '未生成可用样本比较。')]
     lines += ['', '六、下一步行动']
     if review.get('decision')=='reject':lines.append('先处理停止交易原因，不用其他维度高分抵消。')
-    questions=review.get('questions') or []
-    if questions:lines += [f'{i}. {q}' for i,q in enumerate(questions[:3],1)]
-    else:lines += [f"- {item['title']}" for item in progress.get('next_checks',[])]
+    for index,item in enumerate(next_actions(review,progress),1):
+        lines.append(f"{index}. {item['action']} 原因：{item['reason']}")
     lines += ['', '七、填写信息的作用']
     for row in review.get('input_feedback') or []:
         lines.append(f"{row['label']}：{row.get('role','')} 本轮反馈：{row.get('feedback','未生成单独反馈')}")

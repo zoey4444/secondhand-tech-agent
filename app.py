@@ -18,6 +18,8 @@ from seller_profile import render_seller_input, show_seller_feedback
 from product_import import render_listing_import, start_imported_review
 from material_changes import compare_rounds, show_material_changes
 from review_report import show_report_download
+from price_screenshots import show_price_import
+from next_actions import show_next_actions
 
 load_dotenv()
 
@@ -276,6 +278,8 @@ if stage == 3:
         seller_profile = render_seller_input(
             get_api_key(), os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
             os.getenv("DEEPSEEK_VISION_MODEL", "deepseek-flash"))
+        show_price_import(get_api_key(), os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
+                          os.getenv("DEEPSEEK_VISION_MODEL", "deepseek-flash"), model)
         evidence_left, evidence_right = st.columns([0.8, 1.2], gap="large")
         with evidence_left:
             saved_price = str(st.session_state.get("confirmed_price", "")).strip()
@@ -339,7 +343,7 @@ elif stage == 4:
         st.markdown("### ✅ 第三站 · 商品线索已贴好")
         price_caption = "价格待核实" if not price or price == "未标价" else f"标价 ¥{price}"
         st.caption(f"{price_caption} · {'商品描述已填写' if listing else '暂无商品描述，将列为待补信息'}")
-        if st.button("修改价格或描述", key="edit_evidence"):
+        if st.button("修改描述／补充卖家或比价截图", key="edit_evidence"):
             st.session_state.pop("review_result", None)
             st.session_state.pop("scene_token", None)
             st.session_state["journey_stage"] = 3
@@ -398,7 +402,7 @@ if stage == 4 and "review_result" in st.session_state:
     if saved_result.get("material_changes"):
         show_material_changes(saved_result["material_changes"])
     elif saved_result.get("round_changes"):
-        with st.expander("这次答复解决了什么，还缺什么？", expanded=True):
+        with st.expander("这次答复解决了什么，还缺什么？", expanded=False):
             for change in saved_result["round_changes"]:
                 st.write(f"{change['change']}：{change['summary']}")
     if st.button("重新分析当前材料", key="reanalyze_current"):
@@ -409,6 +413,8 @@ if stage == 4 and "review_result" in st.session_state:
         retry_case["previous_issues"] = list(prior_by_id.values())
         with st.spinner("正在重新核对当前材料……"):
             retried = review_case(retry_case)
+        if not retried.get("error"):
+            retried["material_changes"] = compare_rounds(saved_result, retried, "重新分析同一批材料；未新增输入。")
         st.session_state.setdefault("review_history", []).append(make_run_record(
             retry_case, retried, os.getenv("DEEPSEEK_MODEL", "deepseek-flash"), st.session_state["review_round"]))
         if retried.get("error"):
@@ -417,21 +423,13 @@ if stage == 4 and "review_result" in st.session_state:
             st.session_state["review_result"] = retried
             st.session_state["decision_change"] = "已重新分析当前材料；结果仍需结合原文和实物核对。"
             st.rerun()
-    with st.expander("🔎 查看待核实问题", expanded=False):
-        st.caption("这里只列出需要处理的问题；完整原文和处理状态可下载核验记录查看。")
-        for index, issue in enumerate(saved_result.get("issues", [])[:10], 1):
-            with st.container(border=True):
-                priority = {"high": "优先核实", "medium": "需要核实", "low": "补充确认"}.get(issue["severity"], "待核实")
-                st.markdown(f"**{index}. {priority}｜{issue['summary']}**")
-                if issue.get("question"):
-                    st.write(f"建议动作：{issue['question']}")
-        if saved_result.get("claims"):
-            with st.expander("查看从原文提取的陈述（尚未核实）"):
-                for claim in saved_result["claims"]:
-                    st.write(f"{source_label(claim['source'])}：『{claim['quote']}』→ {claim['claim']}")
+    if saved_result.get("claims"):
+        with st.expander(f"原文陈述：共{len(saved_result['claims'])}条（尚未核实）"):
+            for claim in saved_result["claims"]:
+                st.text(f"{source_label(claim['source'])}：{claim['quote']} → {claim['claim']}")
     comparison = saved_result.get("price_comparison", {})
     with st.container(border=True):
-        st.markdown("### 💰 同款二手价格对比")
+        st.markdown("### 💰 同款挂牌价参考")
         st.write(comparison.get("summary", "没有可用的同款二手参考价，暂时无法判断价格是否接近市价。"))
         if comparison.get("status") == "compared":
             st.caption("参考的是你提供的挂牌价样本，实际成交价和机况可能不同；价格差异本身不能证明商品有问题。")
@@ -439,6 +437,7 @@ if stage == 4 and "review_result" in st.session_state:
     show_seller_feedback(saved_case)
     report_case = {**saved_case, "seller_replies": st.session_state.get("seller_replies", [])}
     current_progress = show_verification_progress(report_case, saved_result)
+    show_next_actions(saved_result, current_progress)
     show_report_download(report_case, saved_result, current_progress, st.session_state.get("review_history", []))
 
     with st.container(border=True, key="seller_reply_stage"):
