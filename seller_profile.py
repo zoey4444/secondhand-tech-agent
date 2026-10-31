@@ -137,7 +137,11 @@ def render_seller_input(api_key, base_url, model):
     st.session_state.setdefault(p + 'binding', previous.get('binding', BINDINGS[0]))
     st.session_state.setdefault(p + 'confirmed', st.session_state.get(p + 'draft_confirmed', False))
 
-    with st.expander('卖家主页和评价（选填，可不填）', expanded=True):
+    # Listing screenshots may contain a seller credit badge. That single
+    # extracted label is not a seller-profile screenshot and must not open the
+    # entire optional form by default. Only an uploaded profile image opts in.
+    has_seller_images = bool(st.session_state.get(p + 'images'))
+    with st.expander('卖家主页和评价（选填，点击展开）', expanded=has_seller_images):
         st.caption('上传同一卖家的主页／评价截图，或直接填写。先遮盖个人信息；识别后请核对数字和评价角色。')
         files = st.file_uploader('卖家主页或评价截图（最多3张）', type=['png', 'jpg', 'jpeg', 'webp'],
                                  accept_multiple_files=True, key=p + 'images', on_change=clear_draft)

@@ -274,7 +274,7 @@ if stage == 3:
     with st.container(border=True, key="step_evidence"):
         st.markdown("### 🧷 第三站 · 为商品贴上线索")
         if st.session_state.get("imported_from_screenshot") and st.session_state.get("needs_seller_prompt"):
-            st.info("未确认收到独立的卖家主页截图。你可以在下面选填卖家主页／评价截图；不填也可以继续，页面底部有‘跳过卖家信息，直接投掷’。")
+            st.caption("卖家主页截图可选填：商品页里的信用标签不等于卖家主页资料。想核对评价和账号信息时，展开下方入口上传；不填也可继续投掷。")
         seller_profile = render_seller_input(
             get_api_key(), os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
             os.getenv("DEEPSEEK_VISION_MODEL", "deepseek-flash"))
