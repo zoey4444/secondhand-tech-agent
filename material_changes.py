@@ -29,7 +29,7 @@ def compare_rounds(previous, current, new_material):
 
 def show_material_changes(change):
     import streamlit as st
-    labels = {'allow':'当前材料未见明显异常', 'wait':'仍需补充核对', 'reject':'先处理停止交易原因'}
+    labels = {'allow':'当前材料未见明显阻断项（不代表建议购买）', 'wait':'仍需补充核对', 'reject':'先处理停止交易原因'}
     added = sum(item['label'] == '本轮新增疑问' for item in change.get('changes', []))
     total = len(change.get('changes', []))
     st.caption(f'本轮变化：新增疑问{added}项；其余待核对记录{total-added}项。详细材料按需展开。')

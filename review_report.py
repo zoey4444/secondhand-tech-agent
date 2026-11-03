@@ -5,7 +5,7 @@ from review_record import APP_VERSION, INPUT_FIELDS, OUTPUT_FIELDS
 from review_policy import source_label, STATUS_LABELS
 from verification_progress import case_fingerprint, STATUSES
 
-DECISIONS = {'allow': '当前材料未见明显异常，仍需实物核验',
+DECISIONS = {'allow': '当前材料未见明显阻断项；这不代表建议购买或交易安全，仍需自行核验实物、凭证和交易条款',
              'wait': '暂缓付款，先补充或核对信息',
              'reject': '先处理停止交易原因，不应据此付款'}
 LABELS = {'platform':'展示平台', 'payment_channel':'下单付款渠道', 'category':'产品类别',

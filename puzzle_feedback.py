@@ -100,8 +100,8 @@ def card_summary(title: str, body: str, notes: str = "", case: dict | None = Non
     if title == "初步风险提示":
         if "有若干事项需核实" in body:
             return "目前有若干事项需核实，先补证据再决定是否购买。"
-        if "当前材料未见明显异常信号" in body:
-            return "现有材料未见明显异常信号，付款前仍要核对实物和凭证。"
+        if "未见明显阻断项" in body:
+            return "现有材料未见明显阻断项；这不代表建议购买，仍需自行核验实物、凭证和交易条款。"
         return "现有材料不足以明确判断，请先补充关键事实。"
     if title == "判断边界":
         return "本助手只核验提交的材料，不能鉴定真伪或保证交易安全。"

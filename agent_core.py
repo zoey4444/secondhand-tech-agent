@@ -512,7 +512,7 @@ def decide(state: ReviewState) -> tuple[str, str]:
         return "wait", "这次分析未能可靠完成，暂时无法给出判断。请点击“重新分析当前材料”重试。"
     if not state["claims"]:
         return "wait", "模型未提供可追溯的商品陈述；请补充材料后重试。"
-    return "allow", "当前提交材料未见明显异常信号；购买前仍需实物验货、核对凭证和交易条款。"
+    return "allow", "当前提交材料未见明显阻断项；这不代表建议购买或交易安全，请自行核验实物、凭证和交易条款。"
 
 
 def compose_result(state: ReviewState) -> ReviewState:
@@ -540,7 +540,7 @@ def compose_result(state: ReviewState) -> ReviewState:
         gaps = ["- 当前资料中未检出可引用的具体矛盾；这不等于商品已获证实。"]
     questions = [f"- {item}" for item in state["questions"]]
     checklist = _text(case.get("category_guidance"), 1200) or "请按具体型号核对主要功能、配件和凭证。"
-    risk = {"allow": "当前材料未见明显异常信号", "reject": "交易条件存在冲突或付款风险，暂缓购买", "wait": "先补充信息，再作判断"}[decision]
+    risk = {"allow": "未检出触发暂停交易的材料线索", "reject": "交易条件存在冲突或付款风险，暂缓购买", "wait": "先补充信息，再作判断"}[decision]
     followup = ""
     changes = []
     if replies:

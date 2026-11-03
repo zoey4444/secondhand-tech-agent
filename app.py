@@ -469,7 +469,7 @@ if stage == 4 and "review_result" in st.session_state:
                     st.session_state["round_previous_issues"] = saved_result.get("issues", [])
                     old_decision, _ = cart_gate(saved_result)
                     new_decision, _ = cart_gate(followup_result)
-                    labels = {"allow": "当前材料未见明显异常", "reject": "先解决交易冲突或付款问题", "wait": "仍需补充或核对信息"}
+                    labels = {"allow": "当前材料未见明显阻断项（不代表建议购买）", "reject": "先解决交易冲突或付款问题", "wait": "仍需补充或核对信息"}
                     if new_decision == old_decision:
                         change = f"与上一轮相比，购物车判断仍是「{labels[new_decision]}」。请看‘回复后的变化’拼图，确认疑点是否真正解决。"
                     else:
