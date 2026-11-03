@@ -42,13 +42,21 @@ def first_complete_sentence(body: str) -> str:
     return ""
 
 
+def checklist_points(body: str) -> list[str]:
+    """Normalize model-written checklist prose into readable, dash-free points."""
+    cleaned = clean_detail(body)
+    points = []
+    for line in cleaned.splitlines():
+        line = re.sub(r"^\s*(?:[-*•]|\d+[.、)])\s*", "", line).strip()
+        if not line:
+            continue
+        points.extend(part.strip() for part in re.split(r"(?<=[。！？])\s*", line) if part.strip())
+    return points
+
+
 def checklist_summary(body: str) -> str:
-    """Keep the overview scannable; the expanded panel retains every action."""
-    cleaned = re.sub(r"[*#`]+", "", body)
-    actions = [re.sub(r"^\s*(?:[-•]|\d+[.、)])\s*", "", item).strip()
-               for item in re.split(r"[；;\n]+", cleaned)]
-    actions = [item for item in actions if item]
-    return f"收货时核对型号配置、外观功能、配件和售后；共 {len(actions)} 项，展开查看完整清单。" if actions else ""
+    points = checklist_points(body)
+    return f"收货时逐项核对型号配置、外观功能、配件和售后；共 {len(points)} 项，展开查看完整清单。" if points else ""
 
 
 def card_summary(title: str, body: str, notes: str = "", case: dict | None = None) -> str:
@@ -109,7 +117,7 @@ def clean_detail(body: str) -> str:
     return "\n".join(line for line in lines if not re.fullmatch(r"\s*\|?[-:|\s]+\|?\s*", line))
 
 
-def issue_overview(issues):
+def group_issues(issues):
     groups = {"缺失": [], "矛盾": [], "其他待核实": []}
     seen = set()
     for item in issues:
@@ -129,19 +137,35 @@ def issue_overview(issues):
         else:
             group = '其他待核实'
         groups[group].append(item)
+    return groups
+
+
+def issue_group_detail(name, items):
+    if not items:
+        return f"本轮没有识别到{name}事项。"
+    lines = []
+    for number, item in enumerate(items, 1):
+        tag = '【优先核实】' if item.get('severity') == 'high' else ''
+        lines.append(f"{number}. {tag}{item.get('summary', '')}")
+        for evidence in item.get('evidence', []):
+            quote = str(evidence.get('quote', '')).strip()
+            if quote:
+                lines.append(f"材料来源：{source_label(evidence.get('source', ''))}")
+                lines.append(f"原文：{quote}")
+        if item.get('question'):
+            lines.append('建议核实：' + str(item['question']))
+    return '\n'.join(lines)
+
+
+def issue_overview(issues):
+    groups = group_issues(issues)
     priority = sum(i.get('severity') == 'high' for items in groups.values() for i in items)
     summary = '\n'.join(f'{name}：共{len(items)}点' for name, items in groups.items())
     summary += f'\n优先核实：共{priority}点'
     lines = ['按问题条目统计；优先核实是上述问题的优先级，与分类数量不相加。']
     for name, items in groups.items():
         lines.append(f'\n{name}：共{len(items)}点')
-        for number, item in enumerate(items, 1):
-            tag = '【优先核实】' if item.get('severity') == 'high' else ''
-            lines.append(f"{number}. {tag}{item.get('summary', '')}")
-            for evidence in item.get('evidence', []):
-                lines.append(f"引用{source_label(evidence.get('source', ''))}：{evidence.get('quote', '')}")
-            if item.get('question'):
-                lines.append('建议动作：' + item['question'])
+        lines.append(issue_group_detail(name, items))
     return summary, '\n'.join(lines)
 
 
@@ -166,9 +190,11 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
         if title == "建议向卖家核实" and questions:
             body = questions
         summary = card_summary(title, body, notes, case)
+        issue_groups = None
         if title == '缺失或矛盾':
             if review is not None:
                 summary, body = issue_overview(review.get('issues', []))
+                issue_groups = group_issues(review.get('issues', []))
                 if review.get('analysis_notice') or review.get('error'):
                     summary += '\n分析未完整完成，请展开核对。'
             else:
@@ -179,24 +205,32 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
             '回复后的变化': 'pz-update',
         }.get(title, '')
         issue_counts = ''
-        if title == '缺失或矛盾' and review is not None:
-            counts = re.findall(r'^(缺失|矛盾|其他待核实|优先核实)：共(\d+)点$', summary, flags=re.M)
-            issue_counts = '<div class="pz-counts">' + ''.join(
-                f'<span class="pz-count"><b>{number}</b><small>{name}</small></span>'
-                for name, number in counts if name != '优先核实') + '</div>'
-            priority = next((number for name, number in counts if name == '优先核实'), '0')
-            issue_counts += f'<div class="pz-priority">优先核实 <strong>{priority}</strong> 点</div>'
+        issue_details_html = ''
+        if issue_groups is not None:
+            issue_counts = '<div class="pz-counts">'
+            detail_parts = []
+            for name, items in issue_groups.items():
+                issue_counts += (f'<button class="pz-count" type="button" data-category="{escape(name, quote=True)}" '
+                                 f'aria-label="查看{name}：{len(items)}点" aria-expanded="false" aria-controls="detailPanel">'
+                                 f'<b>{len(items)}</b><small>{escape(name)}</small></button>')
+                detail_parts.append(
+                    f'<div class="pz-issue-detail" data-category="{escape(name, quote=True)}" hidden>'
+                    f'{escape(issue_group_detail(name, items))}</div>')
+            issue_counts += '</div>'
+            priority = sum(item.get('severity') == 'high' for items in issue_groups.values() for item in items)
+            issue_counts += f'<div class="pz-priority">优先核实 <strong>{priority}</strong> 点 · 点击分类查看对应内容</div>'
+            issue_details_html = ''.join(detail_parts)
         summary_html = issue_counts or f'<p class="pz-summary">{escape(summary)}</p>'
         question_button = '<button class="pz-copy" id="copySeller" type="button">复制追问</button><span id="copyStatus" class="pz-copy-status" aria-live="polite"></span>' if title == "建议向卖家核实" and questions else ""
+        expand_button = '' if issue_groups is not None else f'<button class="pz-expand" type="button" aria-expanded="false" data-closed-label="{"查看要发送的话 ↓" if title == "建议向卖家核实" else "查看补充说明 ↓"}">{"查看要发送的话 ↓" if title == "建议向卖家核实" else "查看补充说明 ↓"}</button>'
+        action_html = f'<div class="pz-actions">{question_button}{expand_button}</div>' if question_button or expand_button else ''
+        detail_text = '\n'.join(f'• {point}' for point in checklist_points(body)) if title == '验货清单' else clean_detail(body)
         rendered.append(
             f'<article class="pz-tile {modifier}">'
             f'<h3>{escape(title)}</h3><div class="pz-sub">{escape(subtitle)}</div>'
             f'{summary_html}'
-            '<div class="pz-actions">'
-            f'{question_button}'
-            f'<button class="pz-expand" type="button" aria-expanded="false" data-closed-label="{"查看要发送的话 ↓" if title == "建议向卖家核实" else "查看补充说明 ↓"}">{"查看要发送的话 ↓" if title == "建议向卖家核实" else "查看补充说明 ↓"}</button>'
-            '</div>'
-            f'<div class="pz-details" hidden>{escape(clean_detail(body))}</div>'
+            f'{action_html}'
+            f'<div class="pz-details" hidden>{escape(detail_text)}</div>{issue_details_html}'
             '</article>'
         )
     html = r"""<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -208,10 +242,9 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
 .pz-tile{min-width:0;min-height:196px;border-radius:16px;padding:18px 20px;background:#caebed;border:1px solid #8bc9d8;color:#174b60;display:flex;flex-direction:column}
 .pz-known{background:#caebed}.pz-issues{background:#B5dae9}.pz-questions{background:#cce7d9}.pz-checklist{grid-column:1/-1;min-height:120px;background:#cce7d9;display:grid;grid-template-columns:minmax(190px,.55fr) minmax(0,1.45fr);column-gap:24px;align-items:start}.pz-checklist h3{grid-column:1;grid-row:1}.pz-checklist .pz-sub{grid-column:1;grid-row:2}.pz-checklist .pz-summary{grid-column:2;grid-row:1/3;align-self:center;margin:0}.pz-checklist .pz-actions{grid-column:1/-1;grid-row:3;margin-top:12px}.pz-update{grid-column:1/-1;min-height:0;flex-direction:row;align-items:center;gap:14px;padding:12px 18px}.pz-update .pz-sub{display:none}.pz-update .pz-summary{flex:1;margin:0}.pz-update .pz-actions{margin:0}
 .pz-tile h3{margin:0;font-size:19px;line-height:1.35}.pz-sub{font-size:13px;font-weight:700;color:#286782;margin-top:4px}.pz-summary{white-space:pre-line;font-size:14px;font-weight:600;line-height:1.65;margin:14px 0 16px;word-break:break-word}.pz-checklist .pz-summary{margin:4px 0 12px}.pz-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:auto}
-.pz-counts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0 8px}.pz-count{display:flex;align-items:baseline;gap:7px;padding:7px 9px;border-radius:9px;background:#caebed}.pz-count b{font-size:20px;line-height:1}.pz-count small{font-size:12px;color:#315d6c}.pz-priority{font-size:12px;color:#315d6c;margin:2px 0 14px}
+.pz-counts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0 8px}.pz-count{display:flex;align-items:baseline;gap:7px;width:100%;padding:7px 9px;border:1px solid transparent;border-radius:9px;background:#caebed;color:#174b60;font:inherit;text-align:left;cursor:pointer}.pz-count:hover,.pz-count-active{border-color:#318aa7;background:#cce7d9}.pz-count:focus-visible{outline:3px solid #174b60;outline-offset:2px}.pz-count b{font-size:20px;line-height:1}.pz-count small{font-size:12px;color:#315d6c}.pz-priority{font-size:12px;color:#315d6c;margin:2px 0 14px}
 .pz-tile.pz-selected{outline:2px solid #258db1;outline-offset:2px}
 .pz-expand,.pz-copy,.pz-close{cursor:pointer;border-radius:9px;font-size:13px;font-weight:800;padding:8px 11px}.pz-expand,.pz-close{border:1px solid #63bad9;background:#caebed;color:#1b6178}.pz-copy{border:0;background:#63bad9;color:#123e50}.pz-expand:hover,.pz-copy:hover,.pz-close:hover{filter:brightness(1.04)}.pz-expand:focus-visible,.pz-copy:focus-visible,.pz-close:focus-visible{outline:3px solid #174b60;outline-offset:2px}.pz-copy-status{font-size:12px;font-weight:800;color:#1b6379}
-.pz-expand,.pz-copy,.pz-close{cursor:pointer;border-radius:10px;font-size:12px;font-weight:900;padding:8px 10px}.pz-expand,.pz-close{border:1px solid #63bad9;background:#caebed;color:#1b6178}.pz-copy{border:0;background:#63bad9;color:#123e50}.pz-expand:hover,.pz-copy:hover,.pz-close:hover{filter:brightness(1.08)}.pz-copy-status{font-size:12px;font-weight:800;color:#1b6379}
 .pz-panel{margin-top:18px;padding:20px;border:1px solid #8bc9d8;border-radius:16px;background:#caebed}.pz-panel-head{display:flex;align-items:start;justify-content:space-between;gap:15px}.pz-panel-kicker{font-size:12px;font-weight:800;color:#287897}.pz-panel h3{font-size:21px;margin:4px 0 8px}.pz-panel-summary{font-size:15px;font-weight:700;line-height:1.6;margin:0 0 16px;padding:11px 14px;background:#cce7d9;border-radius:10px}.pz-panel-label{font-size:13px;font-weight:900;color:#286782;margin:14px 0 7px}.pz-panel-body{white-space:pre-wrap;font-size:14px;line-height:1.7;word-break:break-word}
 .pz-panel{scroll-margin-top:72px}.pz-notice{font-size:13px;line-height:1.6;padding:12px 15px;margin:0 0 14px;border:1px solid #63bad9;border-radius:10px;background:#B5dae9;color:#174b60}.pz-foot{font-size:12px;margin-top:16px;color:#315d6c}.pz-tips{font-size:12px;line-height:1.6;margin-top:12px;color:#315d6c}.pz-tips details{margin:5px 0}.pz-tips summary{cursor:pointer}.pz-tip-body{white-space:pre-wrap;padding:8px 0;max-height:240px;overflow:auto}.pz-hidden{position:absolute;left:-99999px;top:-99999px}
 @media(max-width:1050px){.pz-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.pz-questions{grid-column:1/-1}.pz-checklist{grid-template-columns:minmax(150px,.45fr) minmax(0,1.55fr)}}
@@ -222,9 +255,12 @@ __ANALYSIS_NOTICE__<div class="pz-grid">__TILES__</div>
 __TIPS__
 <textarea id="sellerMessage" class="pz-hidden" aria-hidden="true">__COPY_TEXT__</textarea></div>
 <script>
-const panel=document.getElementById('detailPanel');let selected=null;
-document.querySelectorAll('.pz-expand').forEach(function(button){button.addEventListener('click',function(){const tile=button.closest('.pz-tile');if(selected===tile&&!panel.hidden){panel.hidden=true;tile.classList.remove('pz-selected');button.textContent=button.dataset.closedLabel;button.setAttribute('aria-expanded','false');selected=null;return}document.querySelectorAll('.pz-tile').forEach(function(item){item.classList.remove('pz-selected');const b=item.querySelector('.pz-expand');b.textContent=b.dataset.closedLabel;b.setAttribute('aria-expanded','false')});selected=tile;tile.classList.add('pz-selected');button.textContent='收起详细内容 ↑';button.setAttribute('aria-expanded','true');const title=tile.querySelector('h3').textContent;document.getElementById('panelTitle').textContent=title;document.getElementById('panelSummary').textContent=tile.querySelector('.pz-summary').textContent;document.getElementById('panelLabel').textContent=title==='建议向卖家核实'?'可以直接复制发送':'补充说明';document.getElementById('panelBody').textContent=tile.querySelector('.pz-details').textContent;panel.hidden=false;document.getElementById('panelTitle').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center',inline:'nearest'});panel.focus({preventScroll:true})})});
-document.getElementById('closePanel').addEventListener('click',function(){panel.hidden=true;if(selected){selected.classList.remove('pz-selected');const b=selected.querySelector('.pz-expand');b.textContent=b.dataset.closedLabel;b.setAttribute('aria-expanded','false');selected=null}});
+const panel=document.getElementById('detailPanel');let selected=null;let selectedControl=null;
+function clearSelection(){if(selected){selected.classList.remove('pz-selected');selected.querySelectorAll('.pz-count').forEach(function(item){item.classList.remove('pz-count-active');item.setAttribute('aria-expanded','false')});const expand=selected.querySelector('.pz-expand');if(expand){expand.textContent=expand.dataset.closedLabel;expand.setAttribute('aria-expanded','false')}}selected=null;selectedControl=null}
+function openPanel(tile,control,title,summary,label,body){document.querySelectorAll('.pz-tile').forEach(function(item){item.classList.remove('pz-selected');item.querySelectorAll('.pz-count').forEach(function(count){count.classList.remove('pz-count-active');count.setAttribute('aria-expanded','false')});const expand=item.querySelector('.pz-expand');if(expand){expand.textContent=expand.dataset.closedLabel;expand.setAttribute('aria-expanded','false')}});selected=tile;selectedControl=control;tile.classList.add('pz-selected');if(control.classList.contains('pz-expand')){control.textContent='收起详细内容 ↑';control.setAttribute('aria-expanded','true')}else{control.classList.add('pz-count-active');control.setAttribute('aria-expanded','true')}document.getElementById('panelTitle').textContent=title;document.getElementById('panelSummary').textContent=summary;document.getElementById('panelLabel').textContent=label;document.getElementById('panelBody').textContent=body;panel.hidden=false;document.getElementById('panelTitle').scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center',inline:'nearest'});panel.focus({preventScroll:true})}
+document.querySelectorAll('.pz-expand').forEach(function(button){button.addEventListener('click',function(){const tile=button.closest('.pz-tile');if(selected===tile&&selectedControl===button&&!panel.hidden){panel.hidden=true;clearSelection();return}const title=tile.querySelector('h3').textContent;const summary=tile.querySelector('.pz-summary');const detail=tile.querySelector('.pz-details');openPanel(tile,button,title,summary?summary.textContent:tile.dataset.summary||'',title==='建议向卖家核实'?'可以直接复制发送':'补充说明',detail?detail.textContent:'当前没有可展开的补充内容。')})});
+document.querySelectorAll('.pz-count').forEach(function(button){button.addEventListener('click',function(){const tile=button.closest('.pz-tile');const category=button.dataset.category;const detail=Array.from(tile.querySelectorAll('.pz-issue-detail')).find(function(item){return item.dataset.category===category});if(!detail)return;if(selectedControl===button&&!panel.hidden){panel.hidden=true;clearSelection();return}const count=button.querySelector('b').textContent;openPanel(tile,button,category+' · '+count+'点',category+'类问题共'+count+'点。展开内容列出具体问题、材料原文与建议核实动作。','对应问题与材料依据',detail.textContent.trim()||'本轮没有可展示的材料依据。')})});
+document.getElementById('closePanel').addEventListener('click',function(){panel.hidden=true;clearSelection()});
 const copy=document.getElementById('copySeller');if(copy){copy.addEventListener('click',async function(){const input=document.getElementById('sellerMessage');const status=document.getElementById('copyStatus');let copied=false;try{if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(input.value);copied=true}}catch(e){}if(!copied){input.style.left='0';input.style.top='0';input.style.display='block';input.focus();input.select();try{copied=document.execCommand('copy')}catch(e){}input.style.display='none';input.style.left='-99999px';input.style.top='-99999px'}status.textContent=copied?'已复制，可粘贴给卖家 ✓':'复制未成功，请展开后手动复制'})}
 </script></body></html>"""
     notice = str((review or {}).get("analysis_notice", "")).strip()
