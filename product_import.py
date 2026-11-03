@@ -7,6 +7,34 @@ from domain_knowledge import PLATFORMS, CATEGORIES, MODEL_OPTIONS
 from seller_profile import FIELDS as SELLER_FIELDS, validate_profile, profile_source
 
 FIELDS = ('platform', 'category', 'model', 'details', 'price', 'listing', 'price_note')
+FIELD_LABELS = {
+    'platform': '展示平台', 'category': '商品类别', 'model': '品牌与型号',
+    'details': '代际、版本与配置', 'price': '当前商品标价',
+    'listing': '商品标题与描述', 'price_note': '价格识别说明',
+}
+FIELD_STATUS = {
+    'recognized': '识别到，需核对',
+    'not_shown': '页面未显示',
+    'unreadable': '图片看不清',
+    'uncertain': '信息有歧义，需确认',
+}
+
+
+def _normalize_field_status(data, clean):
+    raw = data.get('field_status') if isinstance(data.get('field_status'), dict) else {}
+    statuses = {}
+    for key in FIELDS:
+        status = raw.get(key)
+        if status not in FIELD_STATUS:
+            # Older model responses did not provide per-field status. Preserve
+            # uncertainty for blanks instead of guessing that the page omitted it.
+            status = 'recognized' if clean.get(key) else 'uncertain'
+        if status == 'recognized' and not clean.get(key):
+            status = 'uncertain'
+        if status != 'recognized' and clean.get(key):
+            status = 'recognized'
+        statuses[key] = status
+    return statuses
 
 
 def parse_listing(content):
@@ -45,7 +73,8 @@ def parse_listing(content):
         raise ValueError('未读到可用商品信息，请换清晰截图或手动填写。')
     if len(clean['listing']) > 5000 or any(len(clean[k]) > 500 for k in FIELDS if k != 'listing'):
         raise ValueError('识别内容过长，请裁剪商品区域后重试。')
-    clean.update(has_seller_page=has_profile, seller_profile=profile if not errors else {}, seller_page_evidence=page_evidence)
+    clean.update(field_status=_normalize_field_status(data, clean), has_seller_page=has_profile,
+                 seller_profile=profile if not errors else {}, seller_page_evidence=page_evidence)
     return clean
 
 
@@ -57,7 +86,11 @@ def extract_listing(files, api_key, base_url, model):
         raise ValueError('请选择1至3张同一商品的页面截图。')
     if not api_key:
         raise ValueError('尚未配置模型密钥，可使用下方手动填写。')
-    prompt = ('只转录商品截图，输出JSON字段platform,category,model,details,price,listing,price_note。'
+    prompt = ('只转录商品截图，输出JSON字段platform,category,model,details,price,listing,price_note和field_status。'
+              'field_status是对象，按上述七个字段逐一填写状态，只能用recognized（截图中有明确内容）、'
+              'not_shown（当前截图页面没有展示该项）、unreadable（该项区域模糊、遮挡或裁切）、'
+              'uncertain（内容有歧义，不能可靠转录）。空值必须区分未显示、看不清或有歧义，不能一律写成未显示。'
+              '有转录内容的字段状态必须为recognized；不确定内容不要猜填。'
               '看不清或未显示的字段为null。model只写可见品牌型号，details写可见代际/容量/颜色配置，不推测。'
               'price仅为当前出售商品的明确标价，纯数字元；多款起价、价格范围、定金或不确定时留空。'
               '不能把原价、划线价、市场参考价、补贴金额、嵌入的历史订单金额当标价；把这些区别写进price_note。'
@@ -92,7 +125,8 @@ def apply_listing(state, data):
                  confirmed_price=clean['price'], confirmed_listing=clean['listing'],
                  confirmed_payment_channel='尚未确定', product_import_note=clean['price_note'],
                  confirmed_model='；'.join(v for v in (clean['model'], clean['details']) if v),
-                 confirmed_chat='', imported_from_screenshot=True)
+                 confirmed_chat='', imported_from_screenshot=True,
+                 product_import_field_status=clean['field_status'])
     has_product = bool(clean['model'] or clean['listing'] or clean['price'])
     source = profile_source(clean['seller_profile'], '尚未确认', True) if clean['has_seller_page'] else ''
     source = source.replace('用户核对过的主页转录／手动录入', '首轮截图自动转录，尚未经用户核对')
@@ -135,3 +169,16 @@ def render_listing_import(api_key, base_url, model):
                 st.warning(str(exc))
             except Exception:
                 st.warning('图片识别未完成，请检查图片模型配置或使用下方手动填写。')
+
+
+def show_import_status():
+    """Display model-estimated OCR states; these are not verified facts."""
+    import streamlit as st
+    statuses = st.session_state.get('product_import_field_status')
+    if not statuses:
+        return
+    with st.expander('截图识别状态（点击查看）', expanded=False):
+        st.caption('这是模型对截图可读性的判断，仍可能出错；空白项不会自动当作页面确实未显示。')
+        for key in FIELDS:
+            status = FIELD_STATUS.get(statuses.get(key), FIELD_STATUS['uncertain'])
+            st.write(f"**{FIELD_LABELS[key]}：**{status}")

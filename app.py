@@ -15,7 +15,7 @@ from review_policy import source_label
 from review_record import APP_VERSION, make_run_record
 from verification_progress import show_verification_progress
 from seller_profile import render_seller_input, show_seller_feedback
-from product_import import render_listing_import, start_imported_review
+from product_import import render_listing_import, start_imported_review, show_import_status
 from material_changes import compare_rounds, show_material_changes
 from review_report import show_report_download
 from price_screenshots import show_price_import
@@ -168,6 +168,7 @@ stage = st.session_state.setdefault("journey_stage", 1)
 from_stage = st.session_state.get("journey_from", stage)
 if stage == 4 and st.session_state.get("imported_from_screenshot"):
     st.info("商品截图已识别，可直接投掷分析。识别内容尚未核实；如有错误，可点下方修改。付款渠道未自动确定。")
+    show_import_status()
     if st.session_state.get("product_import_note"):
         st.caption("价格识别说明：" + st.session_state["product_import_note"])
 show_journey(stage, from_stage)
@@ -273,6 +274,8 @@ else:
 if stage == 3:
     with st.container(border=True, key="step_evidence"):
         st.markdown("### 🧷 第三站 · 为商品贴上线索")
+        if st.session_state.get("imported_from_screenshot"):
+            show_import_status()
         if st.session_state.get("imported_from_screenshot") and st.session_state.get("needs_seller_prompt"):
             st.caption("卖家主页截图可选填：商品页里的信用标签不等于卖家主页资料。想核对评价和账号信息时，展开下方入口上传；不填也可继续投掷。")
         seller_profile = render_seller_input(
