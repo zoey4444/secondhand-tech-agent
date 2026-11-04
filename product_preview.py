@@ -11,7 +11,7 @@ def show_product_preview(category: str, model: str, platform: str, price: str, l
     values = [bool(platform.strip()), bool(model.strip()), bool(price.strip()), bool(listing.strip())]
     count = sum(values)
     category_label = escape((category or "数码商品")[:30])
-    model_label = escape((model or "等小鸡挑选装备型号")[:52])
+    model_label = escape((model or "等叽有数挑选装备型号")[:52])
     platform_label = escape((platform or "先找商品摊位")[:24])
     price_text = (price or "").strip()
     price_badge = f'<span class="pv-ticket">{escape(price_text[:20])}</span>' if price_text else ""
@@ -42,7 +42,7 @@ def show_product_preview(category: str, model: str, platform: str, price: str, l
 .pv-name{color:#491c17}.pv-meta,.pv-card-foot{color:#643820}.pv-ticket{border:2px solid #643820;border-radius:2px;background:#f7be4f;color:#491c17;box-shadow:3px 3px 0 #643820}.pv-dot{border:2px solid #4c725c;border-radius:2px;background:#f5ce87;height:12px}.pv-dot.pv-on{background:#4c725c}.pv-bottom{color:#643820;background:#ffe0a1e8;padding:4px 6px}
 .pv-device-icon img{width:128px;height:128px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(4px 5px 0 #64382066)}
 </style>
-<div class="pv-wrap"><div class="pv-title">🐥 小鸡的集市清单正在成形</div><div class="pv-hint">选好摊位、型号、标价和商品描述，线索就会逐格点亮。</div>
+<div class="pv-wrap"><div class="pv-title">🐥 叽有数的集市清单正在成形</div><div class="pv-hint">选好摊位、型号、标价和商品描述，线索就会逐格点亮。</div>
 <div class="pv-spark pv-s1">✦</div><div class="pv-spark pv-s2">✧</div><div class="pv-spark pv-s3">✦</div>
 <div class="pv-card __CARD_CLASS__">__PRICE_BADGE__ __ICON__<div class="pv-name">__MODEL__</div><div class="pv-meta">__CATEGORY__ · __PLATFORM__</div><div class="pv-card-foot">__LISTING_STATE__</div></div>
 <div class="pv-bottom"><span>集市线索 __COUNT__ / 4</span><span class="pv-dots">__DOTS__</span></div></div>

@@ -33,7 +33,7 @@ class FlowTests(unittest.TestCase):
             button("记下型号，去收集线索 →").click().run()
             at.radio[0].set_value("未标价").run()
             button("线索装进背包，去购物车 →").click().run()
-            button("🛒 小鸡带着线索去购物车").click().run()
+            button("🛒 叽有数带着线索去购物车").click().run()
             self.assertFalse(at.exception)
             self.assertEqual(model.call_count, 0)
             self.assertEqual(controller["decision"], "pending")

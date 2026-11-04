@@ -150,7 +150,7 @@ def start_imported_review(state):
 
 def render_listing_import(api_key, base_url, model):
     import streamlit as st
-    with st.expander('📷 给小鸡看商品页与卖家主页截图', expanded=True):
+    with st.expander('📷 给叽有数看商品页与卖家主页截图', expanded=True):
         st.caption('可跳过截图直接填写。导入会开始一件新商品并清除上一件记录，请先下载需保留的内容。')
         def clear_draft():
             for key in list(st.session_state):

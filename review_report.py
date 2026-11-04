@@ -85,7 +85,7 @@ def show_report_download(case, review, progress, history):
     import streamlit as st
     snapshot, text = build_report(case,review,progress,history)
     name=snapshot['case_fingerprint'][:8]
-    with st.expander('📜 保存小鸡的完整核验报告'):
+    with st.expander('📜 保存叽有数的完整核验报告'):
         st.caption('汇总当前分析、引用、卖家材料、已保存核验记录及补充前后变化。未保存的表单草稿不会包含在报告内。')
         st.download_button('下载完整报告（文本）',text,file_name=f'review-report-{name}.txt',
                            mime='text/plain',key='complete_report_text')

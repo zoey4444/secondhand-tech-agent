@@ -141,7 +141,7 @@ def render_seller_input(api_key, base_url, model):
     # extracted label is not a seller-profile screenshot and must not open the
     # entire optional form by default. Only an uploaded profile image opts in.
     has_seller_images = bool(st.session_state.get(p + 'images'))
-    with st.expander('🐥 小鸡看看卖家主页和评价（选填）', expanded=has_seller_images):
+    with st.expander('🐥 叽有数看看卖家主页和评价（选填）', expanded=has_seller_images):
         st.caption('上传同一卖家的主页／评价截图，或直接填写。先遮盖个人信息；识别后请核对数字和评价角色。')
         files = st.file_uploader('卖家主页或评价截图（最多3张）', type=['png', 'jpg', 'jpeg', 'webp'],
                                  accept_multiple_files=True, key=p + 'images', on_change=clear_draft)
