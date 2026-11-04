@@ -4,7 +4,7 @@ import sys
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 from agent_core import run_review, SYSTEM_PROMPT
 from puzzle_feedback import build_puzzle_html, seller_message
@@ -79,6 +79,11 @@ class BatchReviewTests(unittest.TestCase):
         r = self.review(listing="加微信看照片，付款走闲鱼订单。", chat="")
         self.assertFalse(any(i["kind"] == "off_platform" for i in r["issues"]))
 
+    def test_contact_plus_explicit_wechat_transfer_is_flagged(self):
+        r = self.review(listing="相机正常开机，先加微信转账，再给你寄。", chat="")
+        self.assertTrue(any(i["kind"] == "off_platform" for i in r["issues"]))
+        self.assertEqual(r["decision"], "reject")
+
     def test_two_platforms_are_preserved(self):
         r = self.review(platform="小红书", payment_channel="闲鱼", listing="实际在闲鱼下单付款", chat="")
         self.assertIn("商品展示渠道：小红书", r["analysis"])
@@ -88,10 +93,22 @@ class BatchReviewTests(unittest.TestCase):
         r = self.review(price="1200", listing="现在1201元", chat="")
         self.assertTrue(any(i["kind"] == "price_conflict" for i in r["issues"]))
 
+    def test_market_reference_samples_are_not_listing_price_conflicts(self):
+        samples = self.review(price="2800", listing="用户提供的三个参考挂牌样本：同型号分别2600、3000、3100元；查看日期未标。", chat="")
+        self.assertFalse(any(i["kind"] == "price_conflict" for i in samples["issues"]))
+        mixed = self.review(price="6000", listing="挂牌6000元，而参考挂牌是4500至5000元，配置不同。", chat="")
+        self.assertFalse(any(i["kind"] == "price_conflict" for i in mixed["issues"]))
+
     def test_payment_field_changes_actual_payment_warning(self):
         normal = self.review(payment_channel="闲鱼", listing="自用", chat="")
+        pending = self.review(payment_channel="尚未确定", listing="自用", chat="")
+        other = self.review(payment_channel="其他渠道", listing="自用", chat="")
         personal = self.review(payment_channel="个人转账", listing="自用", chat="")
         self.assertFalse(any(i["kind"] == "off_platform" for i in normal["issues"]))
+        self.assertEqual(pending["decision"], "wait")
+        self.assertIn("下单付款渠道", pending["missing"])
+        self.assertEqual(other["decision"], "wait")
+        self.assertIn("下单付款渠道", other["missing"])
         self.assertTrue(any(i["kind"] == "off_platform" for i in personal["issues"]))
 
     def test_latest_price_reply_supersedes_older_quote(self):
@@ -142,9 +159,10 @@ class BatchReviewTests(unittest.TestCase):
         r = self.review({**EMPTY, "issues":[issue("充电状态待核实", "未测试充电"), issue("麦克风未测试", "麦克风没测")]},
                         listing="未测试充电，麦克风没测", chat="")
         html = build_puzzle_html(r["analysis"], r["evidence_notes"], BASE, r)
-        summary = html.split('class="pz-summary"')[2].split('</p>')[0]
-        self.assertIn("充电状态待核实", summary)
-        self.assertIn("麦克风未测试", summary)
+        self.assertIn('data-category="其他待核实"', html)
+        self.assertIn('<b>2</b><small>其他待核实</small>', html)
+        self.assertIn("充电状态待核实", html)
+        self.assertIn("麦克风未测试", html)
 
 
 if __name__ == "__main__":

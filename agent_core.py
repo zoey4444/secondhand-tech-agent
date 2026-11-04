@@ -21,7 +21,7 @@ from langgraph.graph import END, START, StateGraph
 REQUIRED = (("platform", "交易平台"), ("payment_channel", "下单付款渠道"),
             ("model", "具体型号"), ("price", "标价"), ("listing", "商品描述"))
 SEVERITY = {"high": 0, "medium": 1, "low": 2}
-OFF_PLATFORM = re.compile(r"(加微信|微信转账|支付宝转账|私下转账|个人转账|脱离平台|线下转账|先付定金)")
+OFF_PLATFORM = re.compile(r"(微信转账|支付宝转账|微信付款|支付宝付款|私下转账|个人转账|脱离平台|线下转账|先付定金)")
 PRICE_IN_TEXT = re.compile(r"(?:[￥¥]\s*)?(\d{2,7}(?:\.\d{1,2})?)\s*(?:元|块|包邮|到手价)")
 PRICE_REVISION = re.compile(r"(?:实际(?:卖|售价|成交价)|最终(?:成交价|价格)|现在(?:卖|售价)|改(?:成|为)|就按)\s*(?:是|为|按)?\s*(?:[￥¥]\s*)?(\d{2,7}(?:\.\d{1,2})?)\s*(?:元|块)?")
 PRICE_UNAVAILABLE = re.compile(r"^(?:未标价|价格面议|面议|私聊报价|待定|暂无报价)$")
@@ -173,7 +173,17 @@ def scan_rules(state: ReviewState) -> ReviewState:
     if declared:
         price = float(declared.group())
         for match in PRICE_IN_TEXT.finditer(sources["listing"]):
-            context = sources["listing"][max(0, match.start() - 5):match.start()]
+            sentence_start = max(sources["listing"].rfind(mark, 0, match.start()) for mark in ("。", "；", "\n")) + 1
+            sentence_end_candidates = [pos for mark in ("。", "；", "\n")
+                                       if (pos := sources["listing"].find(mark, match.end())) >= 0]
+            sentence_end = min(sentence_end_candidates) if sentence_end_candidates else len(sources["listing"])
+            sentence = sources["listing"][sentence_start:sentence_end]
+            # User-provided comparison samples belong to market context, not to
+            # the current listing's own price. Do not treat those numbers as a
+            # listing/price-field contradiction.
+            if re.search(r"参考(?:挂牌|价|报价)|挂牌样本|同款报价|样本价|价格范围|中位数|行情样本", sentence):
+                continue
+            context = sources["listing"][max(sentence_start, match.start() - 5):match.start()]
             if any(label in context for label in ("原价", "购入", "买入", "入手", "官网价", "当时")):
                 continue
             if abs(float(match.group(1)) - price) > .005:
@@ -212,8 +222,6 @@ def scan_rules(state: ReviewState) -> ReviewState:
             context = sources[name][max(0, match.start() - 4):match.start()]
             if any(negation in context for negation in ("不要", "不能", "拒绝", "禁止", "请勿", "不支持", "不接受", "不走", "不用", "不做", "别")):
                 continue
-            if match.group() == "加微信":
-                continue  # Contact channel alone does not establish an off-platform payment request.
             severity = "medium" if sources["payment_channel"] == "当面付款" else "high"
             issues.append(_rule_issue("off_platform", "材料出现站外付款或提前付款相关要求，需核对实际成交方式。", severity,
                                       [_evidence(name, match.group())],
