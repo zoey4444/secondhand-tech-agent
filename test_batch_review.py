@@ -11,7 +11,7 @@ from puzzle_feedback import build_puzzle_html, seller_message
 from cart_scene import build_cart_html
 from review_policy import device_question
 
-BASE = dict(platform="闲鱼", category="耳机", model="Bose QuietComfort Ultra Headphones",
+BASE = dict(platform="闲鱼", payment_channel="闲鱼", category="耳机", model="Bose QuietComfort Ultra Headphones",
             price="1200", listing="详情写原盒和收纳包齐全。", chat="卖家：盒子丢了，收纳包也找不到了。")
 EMPTY = dict(claims=[], issues=[], overview="待核实")
 

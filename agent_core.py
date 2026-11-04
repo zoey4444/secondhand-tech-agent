@@ -18,7 +18,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 
 
-REQUIRED = (("platform", "交易平台"), ("model", "具体型号"), ("price", "标价"), ("listing", "商品描述"))
+REQUIRED = (("platform", "交易平台"), ("payment_channel", "下单付款渠道"),
+            ("model", "具体型号"), ("price", "标价"), ("listing", "商品描述"))
 SEVERITY = {"high": 0, "medium": 1, "low": 2}
 OFF_PLATFORM = re.compile(r"(加微信|微信转账|支付宝转账|私下转账|个人转账|脱离平台|线下转账|先付定金)")
 PRICE_IN_TEXT = re.compile(r"(?:[￥¥]\s*)?(\d{2,7}(?:\.\d{1,2})?)\s*(?:元|块|包邮|到手价)")
@@ -151,8 +152,11 @@ def scan_rules(state: ReviewState) -> ReviewState:
             truncated.append(f"reply_{index}")
     price_unavailable = bool(PRICE_UNAVAILABLE.fullmatch(sources["price"]))
     unknown_model = bool(re.search(r"不清楚|待确认|未知|系列|需填写", sources["model"].split("；")[0]))
+    unknown_payment = sources["payment_channel"] in {"尚未确定", "其他渠道"}
     def absent(key):
-        return not sources[key] or (key == "price" and price_unavailable) or (key == "model" and unknown_model)
+        return (not sources[key] or (key == "price" and price_unavailable)
+                or (key == "model" and unknown_model)
+                or (key == "payment_channel" and unknown_payment))
     missing = [label for key, label in REQUIRED if absent(key)]
     issues: list[dict[str, Any]] = []
     for key, label in REQUIRED:
@@ -162,6 +166,7 @@ def scan_rules(state: ReviewState) -> ReviewState:
             summary = "商品未标价，当前无法核验价格是否匹配。" if is_unpriced else f"缺少{label}，当前无法完成该项核验。"
             question = {"price": "最终成交价是多少？方便在商品页或订单里写清楚吗？",
                         "model": "具体是什么型号？方便拍一下型号标签或设备信息吗？",
+                        "payment_channel": "准备在哪个平台下单付款？请确认实际付款对象和渠道，并尽量通过平台订单完成交易。",
                         "listing": "商品的成色、功能和随货物品方便说一下吗？"}.get(key, f"方便补充{label}吗？")
             issues.append(_rule_issue("missing_" + key, summary, "medium", evidence, question))
     declared = re.search(r"\d{1,7}(?:\.\d{1,2})?", sources["price"])

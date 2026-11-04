@@ -23,7 +23,7 @@ class FakeModel:
         return FakeResponse(content)
 
 
-BASE = {"platform": "闲鱼", "category": "耳机", "model": "Apple AirPods 4 主动降噪版",
+BASE = {"platform": "闲鱼", "payment_channel": "闲鱼", "category": "耳机", "model": "Apple AirPods 4 主动降噪版",
         "price": "420", "listing": "个人闲置，260元包邮，支持验货。", "chat": ""}
 EMPTY = {"claims": [], "issues": [], "overview": "当前材料无其他可引用的具体疑点"}
 
