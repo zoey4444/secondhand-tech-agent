@@ -5,29 +5,13 @@ import json
 from pathlib import Path
 
 import streamlit.components.v1 as components
+from mascot_ui import asset_data_uri, chick_sprite_data_uri, device_icon_data_uri
 
 
 def product_icon(category: str) -> str:
-    common = 'fill="none" stroke="#1b6077" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"'
-    if category == "手机":
-        parts = '<rect x="54" y="12" width="72" height="136" rx="15"/><path d="M81 25h18M82 136h16"/>'
-    elif category == "平板":
-        parts = '<rect x="22" y="28" width="136" height="104" rx="12"/><circle cx="147" cy="80" r="3"/>'
-    elif category == "笔记本电脑":
-        parts = '<rect x="28" y="25" width="124" height="88" rx="7"/><path d="M14 127h152l-15 12H29z"/>'
-    elif category == "台式电脑/配件":
-        parts = '<rect x="24" y="30" width="132" height="83" rx="7"/><path d="M90 114v22M65 138h50"/>'
-    elif category == "相机（单反/微单/CCD）":
-        parts = '<path d="M24 55h28l8-14h51l8 14h37v75H24z"/><circle cx="90" cy="91" r="27"/><circle cx="139" cy="69" r="4"/>'
-    elif category == "耳机":
-        parts = '<path d="M35 90V74a55 55 0 0 1 110 0v16"/><rect x="29" y="83" width="23" height="43" rx="9"/><rect x="128" y="83" width="23" height="43" rx="9"/><path d="M145 125c0 14-13 23-39 23"/>'
-    elif category == "智能手表/手环":
-        parts = '<path d="M69 23l5-13h32l5 13M69 137l5 13h32l5-13"/><rect x="50" y="26" width="80" height="108" rx="24"/><circle cx="90" cy="80" r="22"/>'
-    elif category == "游戏机":
-        parts = '<path d="M49 59h82c12 0 20 8 23 21l8 39c2 12-7 20-17 15l-25-15H60l-25 15c-10 5-19-3-17-15l8-39c3-13 11-21 23-21z"/><path d="M57 78v26M44 91h26"/><circle cx="119" cy="84" r="4"/><circle cx="134" cy="99" r="4"/>'
-    else:
-        parts = '<path d="M24 50l66-30 66 30v83l-66 29-66-29z"/><path d="M24 50l66 30 66-30M90 80v82"/>'
-    return f'<svg viewBox="0 0 180 170" role="img" aria-label="{escape(category, quote=True)}示意图"><g {common}>{parts}</g></svg>'
+    """Return the same original pixel icon used by the growing product card."""
+    label = escape(category or "数码商品", quote=True)
+    return f'<img class="device-icon" src="{device_icon_data_uri(category)}" alt="{label}像素图标">'
 
 
 def build_cart_html(category: str, model: str, platform: str, price: str, decision: str, reason: str, token: str = "") -> str:
@@ -40,6 +24,11 @@ def build_cart_html(category: str, model: str, platform: str, price: str, decisi
         "__PLATFORM__": escape(platform[:30]),
         "__PRICE__": escape((price or "价格待确认")[:30]),
         "__DECISION__": decision,
+        "__CHICK_URI__": chick_sprite_data_uri(),
+        "__GRASS_URI__": asset_data_uri("pixel_grass_64.png"),
+        "__SOIL_URI__": asset_data_uri("pixel_soil_64.png"),
+        "__FLOWER_URI__": asset_data_uri("pixel_flower_64.png"),
+        "__CRATE_URI__": asset_data_uri("pixel_crate_64.png"),
         "__TOKEN_JSON__": json.dumps(token).replace("<", "\\u003c"),
         "__REASON_JSON__": json.dumps(reason, ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026"),
     }
@@ -58,7 +47,7 @@ def build_cart_html(category: str, model: str, platform: str, price: str, decisi
 .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:11px}.throw{border:0;border-radius:12px;padding:12px 22px;background:linear-gradient(90deg,#54e2c6,#bbefac);color:#17354a;font-size:15px;font-weight:900;cursor:pointer;box-shadow:0 8px 18px #071322}.throw:hover{filter:brightness(1.12)}.throw:disabled{opacity:.5;cursor:default}.again{border:1px solid #829abc;border-radius:12px;padding:11px 15px;background:#21314e;color:#e0e9f7;font-size:14px;cursor:pointer}.tip{color:#bbcae3;font-size:13px}
 .feedback{margin-top:12px;min-height:69px;border:1px solid #435674;border-radius:13px;padding:12px 16px;background:#172741;color:#deecfc;line-height:1.65;font-size:14px}.feedback.allow{border-color:#4cceab;background:#163c3e}.feedback.reject{border-color:#ee857e;background:#462839}.feedback.wait{border-color:#efca82;background:#483e34}.feedback strong{font-size:17px}.confetti{position:absolute;right:25%;top:98px;opacity:0;pointer-events:none;font-size:25px;z-index:8}.confetti.on{animation:pop 1s ease-out forwards}
 @keyframes cloud{to{transform:translateX(55px)}}@keyframes twinkle{to{opacity:.25;transform:scale(.85)}}@keyframes shake{20%{transform:translateX(-8px)}40%{transform:translateX(9px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}@keyframes pop{20%{opacity:1;transform:translateY(-32px) rotate(20deg)}80%{opacity:1}100%{opacity:0;transform:translateY(75px) rotate(70deg)}}
-@media(max-width:720px){.shell{padding:16px;min-height:580px}.title{font-size:20px}.badge{display:none}.scene{height:365px}.product{left:5%;top:109px;width:145px;height:178px;padding:9px}.product svg{width:94px;height:94px}.product .device{font-size:12px}.cartzone{right:1%;top:105px;width:185px;height:170px}.cartlabel{top:292px;right:2%;font-size:11px}.floor{left:6%;font-size:11px}.trail{display:none}.product .ticket{right:-8px;font-size:11px}}
+@media(max-width:720px){.shell{padding:16px;min-height:580px}.title{font-size:20px}.badge{display:none}.scene{height:365px}.product{left:5%;top:109px;width:145px;height:178px;padding:9px}.product svg{width:94px;height:94px}.product .device{font-size:12px}.cartzone{right:1%;top:105px;width:185px;height:170px}.cartlabel{top:292px;right:2%;font-size:11px}.floor{left:6%;font-size:11px}.trail{display:none}.product .ticket{right:-8px;font-size:11px}.product .device-icon{width:94px;height:94px}}
 @media(prefers-reduced-motion:reduce){.cloud,.spark,.trail,.confetti{animation:none}.product{transition-duration:.01s}}
 body{background:#caebed;color:#174b60}
 .shell{border-color:#63bad9;background:radial-gradient(circle at 24% 7%,#caebed 0%,transparent 36%),linear-gradient(135deg,#B5dae9,#cce7d9 55%,#caebed);color:#174b60}
@@ -68,28 +57,49 @@ body{background:#caebed;color:#174b60}
 .cartzone svg path[stroke]{stroke:#1b6077}.cartzone svg circle{fill:#63bad9}.cartlabel,.floor{color:#174b60}
 .throw{background:linear-gradient(90deg,#63bad9,#B5dae9);color:#143f53;box-shadow:0 7px 14px #63bad955}.again{background:#cce7d9;border-color:#63bad9;color:#174b60}.tip{color:#315e70}
 .feedback{background:#caebed;border-color:#63bad9;color:#174b60}.feedback.allow{background:#cce7d9;border-color:#63bad9}.feedback.reject{background:#B5dae9;border-color:#63bad9}.feedback.wait{background:#caebed;border-color:#63bad9}
+.chick-puppet{position:absolute;left:45%;bottom:4px;width:108px;aspect-ratio:272/364;z-index:3;pointer-events:none;background-image:url("__CHICK_URI__");background-size:400% 100%;background-repeat:no-repeat;background-position:33.333% 0;filter:drop-shadow(0 9px 7px #27576d55);transform-origin:50% 88%;animation:chick-idle 2s ease-in-out infinite}
+.chick-puppet[data-mood="neutral"]{background-position:0% 0}.chick-puppet[data-mood="expect"]{background-position:33.333% 0}.chick-puppet[data-mood="denied"]{background-position:66.667% 0}.chick-puppet[data-mood="aha"]{background-position:100% 0}
+.chick-puppet.react[data-mood="denied"]{animation:chick-denied .72s ease-in-out 2}.chick-puppet.react[data-mood="aha"]{animation:chick-aha .68s cubic-bezier(.18,.8,.24,1.2) 2}
+@keyframes chick-idle{50%{transform:translateY(-7px) rotate(-2deg)}}@keyframes chick-denied{25%{transform:translateY(5px) rotate(-9deg)}65%{transform:translateY(7px) rotate(7deg)}}@keyframes chick-aha{40%{transform:translateY(-18px) scale(1.07)}75%{transform:translateY(2px) scale(.98)}}
+@media(max-width:720px){.chick-puppet{left:43%;bottom:8px;width:72px}}
+@media(prefers-reduced-motion:reduce){.chick-puppet,.chick-puppet.react{animation:none}}
+/* Original pixel-farm scene; the decision text and interaction remain explicit. */
+body{background:#f5ce87;color:#491c17}
+.shell{border:4px solid #643820;border-radius:7px;background:#ffe0a1;box-shadow:inset 0 0 0 4px #ba7a50;color:#491c17;padding:22px}
+.eyebrow{color:#4c725c;letter-spacing:1.5px}.title{color:#491c17;text-shadow:2px 2px #ffe0a1}.badge{background:#f5ce87;border:2px solid #643820;border-radius:3px;color:#491c17}
+.scene{border:3px solid #4c725c;border-radius:4px;background-image:url('__FLOWER_URI__'),linear-gradient(180deg,#4b7fcb 0%,#f9c49d 62%,transparent 62%),url('__GRASS_URI__');background-size:64px 64px,auto,64px 64px;background-repeat:no-repeat,no-repeat,repeat;background-position:7% 83%,0 0,0 0;box-shadow:inset 0 0 0 4px #ffe0a1;image-rendering:pixelated}
+.scene:before{top:62%;height:8px;background:#4c725c;opacity:1}.scene:after{content:"";position:absolute;right:1%;bottom:9px;width:64px;height:64px;background:url('__CRATE_URI__') center/contain no-repeat;image-rendering:pixelated;opacity:.95}
+.cloud{background:#ffe0a1;border-radius:4px;opacity:.78;filter:none;box-shadow:9px -7px 0 #ffe0a1,28px 0 0 #ffe0a1}.spark,.trail{color:#f7be4f}
+.product .device-icon{width:125px;height:118px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(4px 5px 0 #64382066)}.product{background:#ffe0a1;border:4px solid #643820;border-radius:5px;color:#491c17;box-shadow:6px 6px 0 #805f43,0 13px 0 #5e774f;transform-origin:center center}.product .meta{color:#643820}.product .ticket{background:#f7be4f;border:2px solid #643820;border-radius:2px;color:#491c17;box-shadow:3px 3px 0 #88694e}
+.cartzone svg path[stroke]{stroke:#6c4e38}.cartzone svg circle{fill:#a6794f}.cartzone svg{filter:drop-shadow(5px 8px 0 #5d6f4a77)}.cartlabel,.floor{color:#491c17;background:#ffe0a1d9;padding:4px 7px;border:1px solid #643820}.floor{bottom:18px}
+.throw{background:#4b7fcb;color:#f6f4fc;border:3px solid #3a47a0;border-radius:3px;box-shadow:0 5px 0 #3a47a0}.throw:hover{filter:brightness(1.06)}.again{background:#f5ce87;border:2px solid #643820;border-radius:3px;color:#491c17}.tip{color:#643820}
+.feedback{background:#ffe0a1;border:3px solid #643820;border-radius:3px;color:#491c17;box-shadow:3px 3px 0 #cdbb95}.feedback.allow{background:#f5ce87;border-color:#1c7e1b}.feedback.reject{background:#f9c49d;border-color:#970138}.feedback.wait{background:#f5ce87;border-color:#ec7a43}
+.chick-puppet{filter:drop-shadow(5px 5px 0 #4f6d4d55)}
+@media(max-width:720px){.shell{padding:12px}.scene:after{width:42px;height:42px}.floor{max-width:180px}.cartlabel{max-width:115px;text-align:center}.chick-puppet{left:42%}}
 </style></head>
-<body data-decision="__DECISION__"><div class="shell"><div class="top"><div><div class="eyebrow">TOSS TO CART · 二手数码实验室</div><div class="title">把这件商品投进购物车</div></div><div class="badge">拖动商品，或点击“投掷”</div></div>
+<body data-decision="__DECISION__"><div class="shell"><div class="top"><div><div class="eyebrow">SHOPPING CHICK · 数码集市</div><div class="title">小鸡把这件装备投进购物车</div></div><div class="badge">拖动商品，或点击“投掷”</div></div>
 <div class="scene" id="scene"><div class="cloud a"></div><div class="cloud b"></div><div class="spark">✦</div>
 <div class="product" id="product" tabindex="0" role="button" aria-label="拖动商品到购物车"><span class="ticket">__PRICE__</span>__ICON__<div class="device">__MODEL__</div><div class="meta">__CATEGORY__ · __PLATFORM__</div></div>
-<div class="trail">➜</div><div class="cartzone" id="cartZone"><svg viewBox="0 0 300 230" aria-label="购物车图案" role="img"><defs><linearGradient id="cartGrad" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#63bad9"/><stop offset="1" stop-color="#B5dae9"/></linearGradient></defs><path d="M28 45h33l27 112h153l29-82H78" stroke="#1b6077" stroke-width="10" stroke-linejoin="round" fill="none" stroke-linecap="round"/><path d="M84 78h185l-28 79H102z" fill="url(#cartGrad)" opacity=".84"/><path d="M95 168h146" stroke="#1b6077" stroke-width="10" stroke-linecap="round"/><circle cx="117" cy="195" r="15" fill="#63bad9"/><circle cx="220" cy="195" r="15" fill="#63bad9"/></svg></div>
-<div class="cartlabel">核验候选购物车</div><div class="floor">↗ 将商品拖到购物车上方松开</div><div class="confetti" id="confetti">✦ ✧ ✦ ✧</div></div>
-<div class="controls"><button class="throw" id="throw" type="button">🎯 一键投掷</button><button class="again" id="again" type="button">重播动画</button><span class="tip">投掷动画只展示分析结论；交易前仍需实物核验。</span></div>
-<div class="feedback" id="feedback" role="status" aria-live="polite">商品已生成。拖动它碰到购物车，或者点击“一键投掷”，查看分析结论。</div>
+<div class="trail">➜</div><div class="chick-puppet" id="chick" data-mood="expect" aria-hidden="true"></div><div class="cartzone" id="cartZone"><svg viewBox="0 0 300 230" aria-label="购物车图案" role="img"><defs><linearGradient id="cartGrad" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ba7a50"/><stop offset="1" stop-color="#f5ce87"/></linearGradient></defs><path d="M28 45h33l27 112h153l29-82H78" stroke="#643820" stroke-width="10" stroke-linejoin="round" fill="none" stroke-linecap="round"/><path d="M84 78h185l-28 79H102z" fill="url(#cartGrad)" opacity=".84"/><path d="M95 168h146" stroke="#643820" stroke-width="10" stroke-linecap="round"/><circle cx="117" cy="195" r="15" fill="#ba7a50"/><circle cx="220" cy="195" r="15" fill="#ba7a50"/></svg></div>
+<div class="cartlabel">小鸡的候选购物车</div><div class="floor">↗ 把装备拖到购物车上方松开</div><div class="confetti" id="confetti">✦ ✧ ✦ ✧</div></div>
+<div class="controls"><button class="throw" id="throw" type="button">🐥 帮小鸡投掷</button><button class="again" id="again" type="button">再看一次</button><span class="tip">投掷动画只展示分析结论；交易前仍需实物核验。</span></div>
+<div class="feedback" id="feedback" role="status" aria-live="polite">小鸡带着商品线索来到购物车。拖动装备，或点击“帮小鸡投掷”，查看分析结论。</div>
 </div>
 <script>
 (function(){
  const product=document.getElementById('product'); const cart=document.getElementById('cartZone');
- const feedback=document.getElementById('feedback'); const throwButton=document.getElementById('throw');
+ const feedback=document.getElementById('feedback'); const throwButton=document.getElementById('throw'); const chick=document.getElementById('chick');
  const again=document.getElementById('again'); const confetti=document.getElementById('confetti');
  const decision=document.body.dataset.decision; const reason=__REASON_JSON__;
  again.disabled=decision==='pending';
  let dragging=false, attempted=false, startX=0, startY=0, dragX=0, dragY=0;
  function setFeedback(title,detail,kind){feedback.className='feedback '+kind;feedback.textContent='';const strong=document.createElement('strong');strong.textContent=title;feedback.appendChild(strong);feedback.appendChild(document.createElement('br'));feedback.appendChild(document.createTextNode(detail));}
+ function setChickMood(mood){chick.dataset.mood=mood;chick.classList.remove('react');void chick.offsetWidth;chick.classList.add('react');}
  function toss(){
   if(attempted)return; attempted=true; dragging=false; throwButton.disabled=true; product.classList.remove('dragging');
   if(decision==='pending'){
    again.disabled=true;
+   setChickMood('expect');
    product.style.transform='translate(90px,-50px) rotate(-15deg)';
    setFeedback('正在核对提交的材料……','分析完成后，这里会显示投掷结果，下方会一起出现核验拼图。','wait');
    setTimeout(function(){window.parent.postMessage({type:'cart:toss',token:__TOKEN_JSON__},'*');},380);
@@ -104,17 +114,17 @@ body{background:#caebed;color:#174b60}
    product.style.transition='transform .54s ease-in, opacity .5s';
    if(decision==='allow'){
     product.style.transform='translate('+dx+'px,'+dy+'px) rotate(15deg) scale(.42)';
-    setTimeout(function(){product.style.opacity='0';confetti.classList.add('on');setFeedback('✅ 当前材料未见明显阻断项',reason,'allow');},550);
+    setTimeout(function(){product.style.opacity='0';confetti.classList.add('on');setChickMood('aha');setFeedback('✅ 当前材料未见明显阻断项',reason,'allow');},550);
    } else {
     product.style.transform='translate('+dx+'px,'+(dy-25)+'px) rotate(-18deg) scale(.84)';
-    setTimeout(function(){cart.classList.add('shake');product.style.transform='translate(0,0) rotate(-8deg)';setTimeout(function(){product.style.transform='';},420);if(decision==='reject'){setFeedback('⛔ 被购物车弹回：暂不建议购买',reason,'reject');}else{setFeedback('🟡 先核对商品信息，再决定',reason,'wait');}},550);
+    setTimeout(function(){cart.classList.add('shake');product.style.transform='translate(0,0) rotate(-8deg)';setTimeout(function(){product.style.transform='';},420);if(decision==='reject'){setChickMood('denied');setFeedback('⛔ 被购物车弹回：暂不建议购买',reason,'reject');}else{setChickMood('aha');setFeedback('🟡 先核对商品信息，再决定',reason,'wait');}},550);
    }
   },380);
  }
- function reset(){attempted=false;dragging=false;dragX=0;dragY=0;throwButton.disabled=false;cart.classList.remove('shake');confetti.classList.remove('on');product.style.transition='';product.style.opacity='1';product.style.transform='';feedback.className='feedback';feedback.textContent='正在重播本次分析结果……';if(decision!=='pending'){toss();}}
+ function reset(){attempted=false;dragging=false;dragX=0;dragY=0;throwButton.disabled=false;cart.classList.remove('shake');confetti.classList.remove('on');product.style.transition='';product.style.opacity='1';product.style.transform='';setChickMood('expect');feedback.className='feedback';feedback.textContent='正在重播本次分析结果……';if(decision!=='pending'){toss();}}
  product.addEventListener('pointerdown',function(e){if(attempted)return;dragging=true;startX=e.clientX;startY=e.clientY;dragX=0;dragY=0;product.classList.add('dragging');product.setPointerCapture(e.pointerId);});
  product.addEventListener('pointermove',function(e){if(!dragging)return;dragX=e.clientX-startX;dragY=e.clientY-startY;product.style.transform='translate('+dragX+'px,'+dragY+'px) rotate(-5deg)';});
- product.addEventListener('pointerup',function(){if(!dragging)return;dragging=false;const p=product.getBoundingClientRect(),c=cart.getBoundingClientRect();const overlap=p.right>c.left&&p.left<c.right&&p.bottom>c.top&&p.top<c.bottom;if(overlap){toss();}else{product.classList.remove('dragging');product.style.transform='';dragX=0;dragY=0;setFeedback('再靠近一点','把商品拖到购物车上方再松开，或点击“一键投掷”。','wait');}});
+ product.addEventListener('pointerup',function(){if(!dragging)return;dragging=false;const p=product.getBoundingClientRect(),c=cart.getBoundingClientRect();const overlap=p.right>c.left&&p.left<c.right&&p.bottom>c.top&&p.top<c.bottom;if(overlap){toss();}else{product.classList.remove('dragging');product.style.transform='';dragX=0;dragY=0;setFeedback('再靠近一点','把商品拖到购物车上方再松开，或点击“帮小鸡投掷”。','wait');}});
  product.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();toss();}});
  throwButton.addEventListener('click',toss);again.addEventListener('click',reset);
  if(decision!=='pending'){toss();}

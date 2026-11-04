@@ -3,18 +3,7 @@
 from html import escape
 
 import streamlit as st
-
-CATEGORY_ICONS = {
-    "手机": "📱",
-    "平板": "📲",
-    "笔记本电脑": "💻",
-    "台式电脑/配件": "🖥️",
-    "相机（单反/微单/CCD）": "📷",
-    "耳机": "🎧",
-    "智能手表/手环": "⌚",
-    "游戏机": "🎮",
-    "其他数码产品": "📦",
-}
+from mascot_ui import asset_data_uri, device_icon_data_uri
 
 
 def show_product_preview(category: str, model: str, platform: str, price: str, listing: str) -> None:
@@ -22,13 +11,12 @@ def show_product_preview(category: str, model: str, platform: str, price: str, l
     values = [bool(platform.strip()), bool(model.strip()), bool(price.strip()), bool(listing.strip())]
     count = sum(values)
     category_label = escape((category or "数码商品")[:30])
-    model_label = escape((model or "先选择商品型号")[:52])
-    platform_label = escape((platform or "选择交易平台")[:24])
+    model_label = escape((model or "等小鸡挑选装备型号")[:52])
+    platform_label = escape((platform or "先找商品摊位")[:24])
     price_text = (price or "").strip()
     price_badge = f'<span class="pv-ticket">{escape(price_text[:20])}</span>' if price_text else ""
-    icon = CATEGORY_ICONS.get(category, "📦")
     icon_label = escape(category or "商品", quote=True)
-    icon_markup = f'<div class="pv-device-icon" role="img" aria-label="{icon_label}示意图"><span>{icon}</span></div>'
+    icon_markup = f'<div class="pv-device-icon"><img src="{device_icon_data_uri(category)}" alt="{icon_label}像素图标"></div>'
     progress = "".join(
         f'<span class="pv-dot {"pv-on" if filled else ""}"></span>' for filled in values
     )
@@ -49,11 +37,15 @@ def show_product_preview(category: str, model: str, platform: str, price: str, l
 @keyframes pv-appear{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes pv-twinkle{to{opacity:.35;transform:scale(.65)}}
 @media(max-width:650px){.pv-wrap{min-height:400px}.pv-card{width:220px;height:250px}.pv-device-icon{width:128px;height:128px;flex-basis:128px;font-size:80px}}
 @media(prefers-reduced-motion:reduce){.pv-card,.pv-ticket,.pv-spark{animation:none}}
+.pv-wrap{border:4px solid #643820;border-radius:6px;background-image:linear-gradient(180deg,#4b7fcb 0%,#f9c49d 62%,transparent 62%),url('__GRASS_URI__');background-size:auto,64px 64px;box-shadow:0 6px 0 #ba7a50;color:#491c17;image-rendering:pixelated}
+.pv-title,.pv-hint{position:relative;display:table;background:#ffe0a1e8;padding:3px 6px}.pv-title{color:#491c17}.pv-hint{color:#643820}.pv-spark{color:#f7be4f}.pv-card{border:4px solid #643820;border-radius:4px;background:#ffe0a1;box-shadow:6px 6px 0 #643820,0 13px 0 #4c725c}.pv-card.has-model:hover{box-shadow:8px 8px 0 #643820,0 15px 0 #4c725c}
+.pv-name{color:#491c17}.pv-meta,.pv-card-foot{color:#643820}.pv-ticket{border:2px solid #643820;border-radius:2px;background:#f7be4f;color:#491c17;box-shadow:3px 3px 0 #643820}.pv-dot{border:2px solid #4c725c;border-radius:2px;background:#f5ce87;height:12px}.pv-dot.pv-on{background:#4c725c}.pv-bottom{color:#643820;background:#ffe0a1e8;padding:4px 6px}
+.pv-device-icon img{width:128px;height:128px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(4px 5px 0 #64382066)}
 </style>
-<div class="pv-wrap"><div class="pv-title">✨ 你的商品正在成形</div><div class="pv-hint">按填写顺序，平台、型号、价格和描述会逐步出现在商品卡上。</div>
+<div class="pv-wrap"><div class="pv-title">🐥 小鸡的集市清单正在成形</div><div class="pv-hint">选好摊位、型号、标价和商品描述，线索就会逐格点亮。</div>
 <div class="pv-spark pv-s1">✦</div><div class="pv-spark pv-s2">✧</div><div class="pv-spark pv-s3">✦</div>
 <div class="pv-card __CARD_CLASS__">__PRICE_BADGE__ __ICON__<div class="pv-name">__MODEL__</div><div class="pv-meta">__CATEGORY__ · __PLATFORM__</div><div class="pv-card-foot">__LISTING_STATE__</div></div>
-<div class="pv-bottom"><span>商品线索 __COUNT__ / 4</span><span class="pv-dots">__DOTS__</span></div></div>
+<div class="pv-bottom"><span>集市线索 __COUNT__ / 4</span><span class="pv-dots">__DOTS__</span></div></div>
 """
     html = (template.replace("__CARD_CLASS__", "has-model" if model.strip() else "")
             .replace("__PRICE_BADGE__", price_badge)
@@ -61,7 +53,8 @@ def show_product_preview(category: str, model: str, platform: str, price: str, l
             .replace("__MODEL__", model_label)
             .replace("__CATEGORY__", category_label)
             .replace("__PLATFORM__", platform_label)
-            .replace("__LISTING_STATE__", "商品描述已补充" if listing.strip() else "等待补充商品描述")
+            .replace("__LISTING_STATE__", "商品描述已装进背包" if listing.strip() else "背包里还缺商品描述")
             .replace("__COUNT__", str(count))
-            .replace("__DOTS__", progress))
+            .replace("__DOTS__", progress)
+            .replace("__GRASS_URI__", asset_data_uri("pixel_grass_64.png")))
     st.html(html)

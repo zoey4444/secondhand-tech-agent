@@ -141,13 +141,13 @@ def render_seller_input(api_key, base_url, model):
     # extracted label is not a seller-profile screenshot and must not open the
     # entire optional form by default. Only an uploaded profile image opts in.
     has_seller_images = bool(st.session_state.get(p + 'images'))
-    with st.expander('卖家主页和评价（选填，点击展开）', expanded=has_seller_images):
+    with st.expander('🐥 小鸡看看卖家主页和评价（选填）', expanded=has_seller_images):
         st.caption('上传同一卖家的主页／评价截图，或直接填写。先遮盖个人信息；识别后请核对数字和评价角色。')
         files = st.file_uploader('卖家主页或评价截图（最多3张）', type=['png', 'jpg', 'jpeg', 'webp'],
                                  accept_multiple_files=True, key=p + 'images', on_change=clear_draft)
         if files:
             st.caption('上传本身不会参与分析。识别完成并确认下方文字后才会使用；更换截图会清除旧识别草稿。')
-        if st.button('识别卖家主页', disabled=not files, key=p + 'recognize'):
+        if st.button('读取卖家主页线索', disabled=not files, key=p + 'recognize'):
             invalidate()
             try:
                 with st.spinner('正在读取卖家主页和评价……'):
@@ -187,7 +187,7 @@ def show_seller_feedback(case):
     source = case.get('seller_profile', '')
     if not source:
         return
-    with st.expander('卖家主页信息如何参与本轮分析', expanded=False):
+    with st.expander('卖家主页线索如何参与本轮分析', expanded=False):
         for note in profile_feedback(source):
             st.write('• ' + note)
         st.text(source)

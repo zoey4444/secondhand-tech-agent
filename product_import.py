@@ -150,15 +150,15 @@ def start_imported_review(state):
 
 def render_listing_import(api_key, base_url, model):
     import streamlit as st
-    with st.expander('📷 上传商品页和卖家主页，自动识别', expanded=True):
+    with st.expander('📷 给小鸡看商品页与卖家主页截图', expanded=True):
         st.caption('可跳过截图直接填写。导入会开始一件新商品并清除上一件记录，请先下载需保留的内容。')
         def clear_draft():
             for key in list(st.session_state):
                 if key.startswith('listing_ocr_'):
                     del st.session_state[key]
-        files = st.file_uploader('上传商品页及对应卖家主页／评价页（合计最多3张）', type=['png', 'jpg', 'jpeg', 'webp'],
+        files = st.file_uploader('把商品页和对应卖家主页／评价页放进背包（最多3张）', type=['png', 'jpg', 'jpeg', 'webp'],
                                  accept_multiple_files=True, key='product_page_images', on_change=clear_draft)
-        if st.button('识别商品页面', disabled=not files):
+        if st.button('识别截图里的商品线索', disabled=not files):
             clear_draft()
             try:
                 with st.spinner('正在读取商品型号、标价与描述……'):

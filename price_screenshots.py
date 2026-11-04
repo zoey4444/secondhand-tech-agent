@@ -53,13 +53,13 @@ def extract_samples(files,key,url,model,target):
 
 def show_price_import(key,url,model,target):
     import streamlit as st
-    with st.expander('同款挂牌价参考：上传搜索结果截图（选填）'):
+    with st.expander('🐥 逛同款挂牌价摊位：上传搜索截图（选填）'):
         st.caption('不是闲鱼接口或官方市价。请选同型号、配置和成色接近的独立商品，排除配件、定金、故障机、仿制品及重复商品。')
         def clear():
             st.session_state.pop('price_ocr_rows',None)
             st.session_state.pop('price_ocr_edit',None)
         files=st.file_uploader('同款搜索结果截图（最多3张）',type=['png','jpg','jpeg','webp'],accept_multiple_files=True,key='price_ocr_files',on_change=clear)
-        if st.button('识别参考报价',disabled=not files):
+        if st.button('读取同款挂牌价',disabled=not files):
             clear()
             try:
                 with st.spinner('正在读取各条商品报价……'):

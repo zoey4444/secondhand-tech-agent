@@ -20,6 +20,7 @@ from material_changes import compare_rounds, show_material_changes
 from review_report import show_report_download
 from price_screenshots import show_price_import
 from next_actions import show_next_actions
+from mascot_ui import asset_data_uri, chick_sprite_data_uri
 
 load_dotenv()
 
@@ -31,18 +32,24 @@ st.markdown("""
 [data-testid="stHeader"] {background:#caebeddd;}
 [data-testid="stMarkdownContainer"] p,[data-testid="stMarkdownContainer"] li,[data-testid="stWidgetLabel"] p {color:#174b60 !important;}
 h1,h2,h3 {color:#174b60 !important;}
-.hero {padding:27px 31px;border:2px solid #63bad9;border-radius:27px;background:linear-gradient(110deg,#caebed,#B5dae9 58%,#cce7d9);margin:8px 0 18px;box-shadow:0 13px 26px #63bad933;animation:rise .55s ease-out;}
+.hero {position:relative;min-height:178px;padding:27px 190px 27px 31px;border:2px solid #63bad9;border-radius:27px;background:linear-gradient(110deg,#caebed,#B5dae9 58%,#cce7d9);margin:8px 0 18px;box-shadow:0 13px 26px #63bad933;animation:rise .55s ease-out;overflow:hidden;}
 .hero-kicker {color:#267895;letter-spacing:.12em;font-size:13px;font-weight:900;}
 .hero-title {font-size:34px;font-weight:900;color:#174b60;margin:8px 0;}
 .hero-sub {color:#2d6477;font-size:16px;}
-.journey{position:relative;margin:16px 0 24px;padding:17px 15px 65px;background:#cce7d9;border:2px solid #63bad9;border-radius:24px;overflow:hidden;}
+.shopping-chick{display:block;background-image:var(--chick-image);background-size:400% 100%;background-repeat:no-repeat;aspect-ratio:272/364;filter:drop-shadow(0 7px 7px #426f6655);transform-origin:50% 90%;animation:chick-breathe 2.4s ease-in-out infinite;}
+.shopping-chick.neutral{background-position:0% 0}.shopping-chick.expect{background-position:33.333% 0}.shopping-chick.denied{background-position:66.667% 0}.shopping-chick.aha{background-position:100% 0}
+.hero-mascot{position:absolute;right:29px;bottom:-5px;width:135px;}
+.journey{position:relative;margin:16px 0 24px;padding:17px 15px 86px;background:#cce7d9;border:2px solid #63bad9;border-radius:24px;overflow:hidden;}
 .journey-stops{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;position:relative;z-index:1;}
 .journey-stop{text-align:center;padding:9px 5px;border:2px dashed #63bad9;border-radius:15px;background:#caebed;color:#286782;font-size:13px;font-weight:800;}
 .journey-stop.done{border-style:solid;background:#B5dae9}.journey-stop.active{border-style:solid;background:#63bad9;color:#123d51;box-shadow:0 0 0 4px #caebed;}
 .journey-rail{position:absolute;left:9%;right:9%;bottom:30px;height:8px;border-radius:99px;background:#B5dae9;border:1px solid #63bad9;}
-.journey-cart{position:absolute;bottom:12px;left:var(--to);font-size:34px;line-height:1;transform:translateX(-50%);filter:drop-shadow(0 4px 3px #318aa766);}
-.journey-cart.moving{animation:cart-roll .9s cubic-bezier(.22,.72,.2,1) both;}
-@keyframes cart-roll{from{left:var(--from);transform:translateX(-50%) rotate(-9deg)}60%{transform:translateX(-50%) rotate(8deg)}to{left:var(--to);transform:translateX(-50%) rotate(0)}}
+.journey-guide{position:absolute;bottom:9px;left:var(--to);width:58px;transform:translateX(-50%);z-index:2;}
+.journey-guide .shopping-chick{width:54px;}
+.journey-basket{position:absolute;right:-12px;bottom:0;font-size:18px;line-height:1;filter:drop-shadow(0 3px 2px #318aa766);}
+.journey-guide.moving{animation:chick-track .9s cubic-bezier(.22,.72,.2,1) both;}
+@keyframes chick-track{from{left:var(--from);transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-13px)}to{left:var(--to);transform:translateX(-50%) translateY(0)}}
+@keyframes chick-breathe{50%{transform:translateY(-5px) rotate(-2deg)}}
 div.st-key-step_platform,div.st-key-step_device,div.st-key-step_evidence {background:#cce7d9;border:2px solid #63bad9 !important;border-radius:23px !important;padding:16px 20px;box-shadow:0 10px 20px #63bad92d;animation:rise .55s ease-out both;}
 div.st-key-seller_reply_stage {background:linear-gradient(120deg,#cce7d9,#caebed,#B5dae9);border:2px solid #63bad9 !important;border-radius:23px !important;padding:18px 22px;box-shadow:0 10px 20px #63bad92d;margin-top:19px;animation:rise .5s ease-out both;}
 div.st-key-step_device{background:#B5dae9;animation-delay:.1s;margin-top:15px}div.st-key-step_evidence{background:#caebed;animation-delay:.2s;margin-top:15px}
@@ -57,16 +64,56 @@ div.stButton > button[kind="primary"]:hover {background:#caebed !important;trans
 [data-testid="stCaptionContainer"] p {color:#315d6e !important;}
 .small-note {font-size:13px;color:#315d6e;}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-@media(max-width:650px){.journey{padding:12px 8px 57px}.journey-stops{gap:4px}.journey-stop{font-size:11px;padding:8px 3px}.journey-cart{font-size:29px}}
-@media(prefers-reduced-motion:reduce){.hero,.journey-cart,div.st-key-step_platform,div.st-key-step_device,div.st-key-step_evidence{animation:none}}
+@media(max-width:650px){.hero{min-height:152px;padding:17px 100px 17px 18px}.hero-title{font-size:24px}.hero-sub{font-size:13px}.hero-mascot{width:86px;right:8px}.journey{padding:12px 8px 72px}.journey-stops{gap:4px}.journey-stop{font-size:11px;padding:8px 3px}.journey-guide{width:46px}.journey-guide .shopping-chick{width:43px}.journey-basket{font-size:15px;right:-9px}}
+@media(prefers-reduced-motion:reduce){.hero,.shopping-chick,.journey-guide,div.st-key-step_platform,div.st-key-step_device,div.st-key-step_evidence{animation:none}}
+/* Original pixel-farm theme: seamless terrain behind readable parchment panels. */
+.stApp{background-image:linear-gradient(#ffe0a1dd,#f5ce87e6),url('__GRASS_URI__');background-size:auto,64px 64px;color:#491c17}
+[data-testid="stHeader"]{background:#ffe0a1dc;backdrop-filter:blur(4px)}
+[data-testid="stMarkdownContainer"] p,[data-testid="stMarkdownContainer"] li,[data-testid="stWidgetLabel"] p,h1,h2,h3{color:#491c17!important}
+.hero{border:4px solid #643820;border-radius:8px;background:linear-gradient(180deg,#ffe0a1 0%,#f9c49d 82%,#4c725c 82%,#4c725c 100%);box-shadow:0 7px 0 #4c725c,0 13px 0 #ba7a50;min-height:240px;padding:27px 190px 48px 31px}
+.hero:before{content:"";position:absolute;right:180px;top:20px;width:56px;height:56px;background:#f7be4f;box-shadow:0 0 0 6px #f7be4f44;clip-path:polygon(22% 0,78% 0,78% 22%,100% 22%,100% 78%,78% 78%,78% 100%,22% 100%,22% 78%,0 78%,0 22%,22% 22%)}
+.hero:after{content:"";position:absolute;left:0;right:0;bottom:0;height:16px;background-image:url('__GRASS_URI__');background-size:64px 64px;border-top:3px solid #4c725c}
+.hero-kicker{color:#643820;letter-spacing:.14em}.hero-title{color:#491c17;font-size:32px;text-shadow:2px 2px #ffe0a1}.hero-sub{color:#491c17;line-height:1.55;max-width:750px}.hero-mascot{z-index:1;bottom:3px;right:28px;width:145px}
+.journey{background-color:#ffe0a1;background-image:url('__FLOWER_URI__'),url('__GRASS_URI__');background-repeat:no-repeat,repeat;background-size:48px 48px,64px 64px;background-position:right 10px bottom 3px,0 0;border:4px solid #643820;border-radius:8px;box-shadow:0 6px 0 #ba7a50;padding-bottom:92px}
+.journey-stops{gap:11px}.journey-stop{background:#ffe0a1;color:#491c17;border:3px solid #643820;border-radius:4px;box-shadow:3px 3px 0 #643820;padding:10px 5px}.journey-stop.done{background:#f5ce87;border-style:solid}.journey-stop.active{background:#f7be4f;color:#491c17;border-color:#643820;box-shadow:3px 3px 0 #491c17,0 0 0 3px #ffe0a1}
+.journey-rail{bottom:29px;height:30px;border:3px solid #643820;border-radius:3px;background-image:url('__SOIL_URI__');background-size:64px 64px}.journey-guide{bottom:22px}.journey-basket{filter:none}
+div.st-key-step_platform,div.st-key-step_device,div.st-key-step_evidence,div.st-key-seller_reply_stage{background:#ffe0a1!important;border:4px solid #643820!important;border-radius:7px!important;box-shadow:0 6px 0 #ba7a50,0 9px 0 #d8cbaa;color:#491c17}
+div.st-key-step_device{background:#f5ce87!important}div.st-key-step_evidence{background:#ffe0a1!important}
+button[kind="primary"]{background:#4b7fcb!important;color:#f6f4fc!important;border:3px solid #3a47a0!important;border-radius:4px!important;box-shadow:0 5px 0 #3a47a0;font-weight:900}
+button[kind="primary"] p{color:#f6f4fc!important}
+button[kind="primary"]:hover{background:#3a47a0!important;box-shadow:0 7px 0 #3a47a0}
+button[kind="secondary"]{border:2px solid #643820!important;border-radius:4px!important;background:#f5ce87!important;color:#491c17!important}
+button[kind="secondary"] p{color:#491c17!important}
+details,summary{border-color:#643820!important;border-radius:4px!important;background:#ffe0a1!important;color:#491c17!important}
+[data-testid="stFileUploader"]{border:2px dashed #643820;border-radius:4px;background:#f5ce87;padding:8px}
+[data-testid="stTextArea"] textarea,[data-testid="stTextInput"] input,[data-testid="stSelectbox"] div[data-baseweb="select"] > div{background:#f6f4fc!important;color:#491c17!important;border:2px solid #4c725c!important;border-radius:4px!important}
+[data-testid="stSelectbox"] div[data-baseweb="select"] span{color:#491c17!important}
+[data-testid="stSelectbox"] [role="group"]{background:#ffe0a1!important;border:2px solid #643820!important;border-radius:4px!important;box-shadow:3px 3px 0 #ba7a50!important}
+[data-testid="stSelectbox"] [role="combobox"]{background:transparent!important;color:#491c17!important}
+[data-testid="stSelectbox"] [role="group"] button{color:#643820!important}
+[data-testid="stProgressBarTrack"]{background:#ffe0a1!important;border:2px solid #643820;border-radius:3px!important;height:14px!important}
+[data-testid="stProgressBarTrack"]>div{background:#4c725c!important;border-radius:1px!important}
+[data-testid="stFileUploaderDropzone"]{background:#f5ce87!important;border:2px dashed #643820!important;border-radius:4px!important;color:#491c17!important}
+[data-testid="stFileUploaderDropzone"] button{background:#ffe0a1!important;border:2px solid #643820!important;border-radius:3px!important;color:#491c17!important}
+[data-testid="stNumberInputContainer"]{background:#ffe0a1!important;border:2px solid #643820!important;border-radius:4px!important;box-shadow:3px 3px 0 #ba7a50!important}
+[data-testid="stNumberInputField"]{background:transparent!important;color:#491c17!important}
+[data-testid="stNumberInputContainer"] button{background:#f5ce87!important;color:#491c17!important}
+[data-testid="stRadioOption"] > div > div:first-child{border-color:#643820!important;background:#ffe0a1!important}
+[data-testid="stRadioOption"][data-selected="true"] > div > div:first-child{border-color:#4c725c!important;background:#4c725c!important}
+[data-testid="stTextInput"] input::placeholder,[data-testid="stTextArea"] textarea::placeholder{color:#6b7965!important}
+[data-baseweb="popover"] ul{background:#ffe0a1!important}[data-testid="stCaptionContainer"] p,.small-note{color:#643820!important}
+@media(max-width:650px){.hero{min-height:275px;padding:17px 100px 52px 17px;background:linear-gradient(180deg,#ffe0a1 0%,#f9c49d 84%,#4c725c 84%,#4c725c 100%)}.hero-title{font-size:20px}.hero-mascot{width:96px;right:4px}.hero:before{right:104px;width:36px;height:36px}.journey{padding-bottom:83px}.journey-stop{font-size:10px;box-shadow:2px 2px 0 #643820}}
 </style>
-""", unsafe_allow_html=True)
+""".replace("__GRASS_URI__", asset_data_uri("pixel_grass_64.png"))
+   .replace("__SOIL_URI__", asset_data_uri("pixel_soil_64.png"))
+   .replace("__FLOWER_URI__", asset_data_uri("pixel_flower_64.png")), unsafe_allow_html=True)
 
-st.markdown("""
-<div class="hero">
-  <div class="hero-kicker">SECOND-HAND TECH · TOSS TO CART</div>
-  <div class="hero-title">🧩 证据拼图 · 二手数码购前核验</div>
-  <div class="hero-sub">对照商品描述和聊天，找出待核实的地方，整理成给卖家的追问；收到答复后，继续更新判断。</div>
+st.markdown(f"""
+<div class="hero" style="--chick-image:url('{chick_sprite_data_uri()}')">
+  <div class="hero-kicker">SHOPPING CHICK · PIXEL MARKET</div>
+  <div class="hero-title">🐥 小鸡逛数码集市 · 购前核验</div>
+  <div class="hero-sub">小鸡看中了一件二手数码装备。先收集商品描述和聊天线索，再整理追问；等卖家答复后，继续更新判断。</div>
+  <div class="hero-mascot shopping-chick neutral" role="img" aria-label="购物小鸡欢迎你"></div>
 </div>
 """, unsafe_allow_html=True)
 st.caption(f"版本 {APP_VERSION} · 分析以你提供的材料为依据，不能鉴定真伪或保证交易安全。购物车展示当前核验状态。")
@@ -91,17 +138,17 @@ def render_chat_input(prefix: str, label: str, height: int = 145) -> str:
         st.session_state.pop(f"{prefix}_ocr_text", None)
     typed = st.text_area(label, key=f"{prefix}_typed", height=height,
                          placeholder="可以直接粘贴对话文字，也可以上传聊天截图。")
-    images = st.file_uploader("上传聊天截图（可选，最多3张）", type=["png", "jpg", "jpeg", "webp"],
+    images = st.file_uploader("把聊天截图放进小鸡背包（可选，最多3张）", type=["png", "jpg", "jpeg", "webp"],
                               accept_multiple_files=True, key=f"{prefix}_images", on_change=clear_old_transcript,
                               help="按聊天顺序选择图片；上传前请遮盖个人信息。")
     if images:
         if not st.session_state.get(f"{prefix}_ocr_text"):
-            st.info("这些截图尚未转成分析文字。请先点击下方“识别截图中的对话”；直接继续时，图片内容不会参与判断。")
+            st.info("这些截图尚未转成分析文字。请先点击下方“读取截图里的聊天线索”；直接继续时，图片内容不会参与判断。")
         st.caption(f"已选择 {len(images)} 张截图。先点击识别，再核对下方文字；更换截图后请重新识别。")
         with st.expander("预览已选截图"):
             for image in images[:3]:
                 st.image(image, width=300)
-    if st.button("🔎 识别截图中的对话", key=f"{prefix}_recognize", disabled=not images):
+    if st.button("🔎 读取截图里的聊天线索", key=f"{prefix}_recognize", disabled=not images):
         try:
             with st.spinner("正在读取截图中的聊天文字……"):
                 transcript = extract_chat_images(
@@ -143,16 +190,18 @@ def review_case(case: dict) -> dict:
 
 
 def show_journey(stage: int, from_stage: int) -> None:
-    labels = ("🎟️ 选平台", "🎨 定型号", "🧷 贴线索", "🛒 投掷")
+    labels = ("🎟️ 找摊位", "📦 看装备", "🧷 收线索", "🛒 到车边")
     stops = "".join(
         f'<div class="journey-stop {"done" if index < stage else "active" if index == stage else ""}">{label}</div>'
         for index, label in enumerate(labels, 1)
     )
     positions = (10, 35, 60, 85)
     moving = "moving" if from_stage != stage else ""
+    chick_state = "expect" if stage == 4 else "neutral"
     st.markdown(
         f'<div class="journey"><div class="journey-stops">{stops}</div><div class="journey-rail"></div>'
-        f'<div class="journey-cart {moving}" style="--from:{positions[from_stage - 1]}%;--to:{positions[stage - 1]}%">🛒</div></div>',
+        f'<div class="journey-guide {moving}" style="--from:{positions[from_stage - 1]}%;--to:{positions[stage - 1]}%;--chick-image:url(\'{chick_sprite_data_uri()}\')" aria-hidden="true">'
+        f'<span class="shopping-chick {chick_state}"></span><span class="journey-basket">🛒</span></div></div>',
         unsafe_allow_html=True,
     )
 
@@ -162,7 +211,7 @@ def reset_product():
         del st.session_state[key]
 
 
-st.button("清空全部，换一件商品", on_click=reset_product,
+st.button("🐥 清空本轮，逛下一件", on_click=reset_product,
           help="清除本次商品信息、截图、卖家回复和核验结果，回到第一步。需要留存时请先下载记录。")
 stage = st.session_state.setdefault("journey_stage", 1)
 from_stage = st.session_state.get("journey_from", stage)
@@ -178,18 +227,18 @@ if stage == 1:
     render_listing_import(get_api_key(), os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
                           os.getenv("DEEPSEEK_VISION_MODEL", "deepseek-flash"))
     with st.container(border=True, key="step_platform"):
-        st.markdown("### 🎟️ 第一站 · 选交易场景")
+        st.markdown("### 🎟️ 第一站 · 小鸡找商品摊位")
         saved_platform = st.session_state.get("confirmed_platform", PLATFORMS[0])
-        platform = st.selectbox("在哪里看到这件商品？", PLATFORMS,
+        platform = st.selectbox("小鸡在哪里看到这件商品？", PLATFORMS,
                                 index=PLATFORMS.index(saved_platform) if saved_platform in PLATFORMS else 0,
                                 key="journey_platform_choice",
                                 help="这里记录商品展示渠道；下单付款的地方单独填写。")
         payment_options = ["尚未确定", "闲鱼", "转转", "淘宝", "京东", "小红书", "当面付款", "个人转账", "其他渠道"]
         saved_payment = st.session_state.get("confirmed_payment_channel", "尚未确定")
-        payment_channel = st.selectbox("准备在哪里下单付款？", payment_options,
+        payment_channel = st.selectbox("小鸡准备在哪里下单付款？", payment_options,
                                       index=payment_options.index(saved_payment) if saved_payment in payment_options else 0,
                                       key="journey_payment_channel")
-        if st.button("确认平台，让购物车前进 →", type="primary", use_container_width=True):
+        if st.button("记下摊位，去看装备 →", type="primary", use_container_width=True):
             st.session_state["confirmed_platform"] = platform
             st.session_state["confirmed_payment_channel"] = payment_channel
             st.session_state["journey_stage"] = 2
@@ -198,9 +247,9 @@ if stage == 1:
 else:
     platform = st.session_state["confirmed_platform"]
     with st.container(border=True, key="step_platform"):
-        st.markdown(f"### ✅ 第一站 · 展示：{platform}")
+        st.markdown(f"### ✅ 第一站 · 小鸡找到摊位：{platform}")
         st.caption(f"下单付款：{st.session_state.get('confirmed_payment_channel', '尚未确定')}")
-        if st.button("修改交易平台", key="edit_platform"):
+        if st.button("返回修改摊位 / 平台", key="edit_platform"):
             st.session_state.pop("review_result", None)
             st.session_state.pop("scene_token", None)
             st.session_state["journey_stage"] = 1
@@ -208,14 +257,14 @@ else:
 
 if stage == 2:
     with st.container(border=True, key="step_device"):
-        st.markdown("### 🎨 第二站 · 给商品定造型")
+        st.markdown("### 📦 第二站 · 小鸡认准数码装备")
         saved_category = st.session_state.get("confirmed_category", CATEGORIES[0])
-        category = st.selectbox("这是什么数码产品？", CATEGORIES,
+        category = st.selectbox("小鸡看中的是哪类数码装备？", CATEGORIES,
                                 index=CATEGORIES.index(saved_category) if saved_category in CATEGORIES else 0,
                                 key="device_category")
         saved_choice = st.session_state.get("confirmed_model_choice", "")
         options = [*MODEL_OPTIONS[category]]
-        model_choice = st.selectbox("① 从常见型号中选择", options,
+        model_choice = st.selectbox("① 选择装备型号", options,
                                     index=options.index(saved_choice) if saved_choice in options else None,
                                     placeholder="选择型号，或选手动填写", key=f"device_model_{category}")
         needs_manual = model_choice == "其他型号（手动填写）" or "需填写" in (model_choice or "")
@@ -246,7 +295,7 @@ if stage == 2:
         if model and model_details.strip():
             model = f"{model}；{model_details.strip()}"
         st.caption("型号和配置用于核对商品描述、聊天及参考报价是否对应同一件商品；不清楚的内容无需猜测。")
-        if st.button("确认型号，让购物车前进 →", type="primary", use_container_width=True):
+        if st.button("记下型号，去收集线索 →", type="primary", use_container_width=True):
             if not model.strip():
                 st.warning("请填写或选择已知的品牌 / 系列；如果只是不清楚代际或版本，请在下方“具体代际 / 版本”中选择“不清楚”。")
             else:
@@ -262,7 +311,7 @@ elif stage > 2:
     category = st.session_state["confirmed_category"]
     model = st.session_state["confirmed_model"]
     with st.container(border=True, key="step_device"):
-        st.markdown(f"### ✅ 第二站 · {category} · {model}")
+        st.markdown(f"### ✅ 第二站 · 小鸡认准 {category} · {model}")
         if st.button("修改商品型号", key="edit_device"):
             st.session_state.pop("review_result", None)
             st.session_state.pop("scene_token", None)
@@ -273,7 +322,7 @@ else:
 
 if stage == 3:
     with st.container(border=True, key="step_evidence"):
-        st.markdown("### 🧷 第三站 · 为商品贴上线索")
+        st.markdown("### 🧷 第三站 · 小鸡收集商品线索")
         if st.session_state.get("imported_from_screenshot"):
             show_import_status()
         if st.session_state.get("imported_from_screenshot") and st.session_state.get("needs_seller_prompt"):
@@ -287,7 +336,7 @@ if stage == 3:
         with evidence_left:
             saved_price = str(st.session_state.get("confirmed_price", "")).strip()
             default_price_mode = "未标价" if saved_price == "未标价" else "已标价"
-            price_mode = st.radio("价格情况", ["已标价", "未标价"], horizontal=True,
+            price_mode = st.radio("小鸡看到标价了吗？", ["已标价", "未标价"], horizontal=True,
                                   index=0 if default_price_mode == "已标价" else 1,
                                   key="journey_price_mode")
             if "journey_price_number" not in st.session_state:
@@ -296,7 +345,7 @@ if stage == 3:
                 except ValueError:
                     st.session_state["journey_price_number"] = None
             if price_mode == "已标价":
-                price_number = st.number_input("商品标价（元）", min_value=0.01,
+                price_number = st.number_input("小鸡看到的商品标价（元）", min_value=0.01,
                                                step=10.0, format="%.2f", key="journey_price_number",
                                                placeholder="输入数字，例如 420")
                 price = f"{price_number:g}" if price_number is not None else ""
@@ -317,13 +366,13 @@ if stage == 3:
                 st.warning(sample_preview["summary"])
             elif sample_preview["status"] == "insufficient":
                 st.caption(sample_preview["summary"])
-            chat = render_chat_input("initial_chat", "卖家沟通内容（选填）")
+            chat = render_chat_input("initial_chat", "小鸡和卖家的聊天内容（选填）")
         with evidence_right:
-            listing = st.text_area("商品标题与描述", height=245, key="journey_listing",
+            listing = st.text_area("商品标题与描述（照原文粘贴）", height=245, key="journey_listing",
                                    value=st.session_state.get("confirmed_listing", ""),
                                    placeholder="粘贴商品介绍、成色、配件及售后说明；先遮盖姓名、电话、地址和订单号。")
-        save_evidence = st.button("保存并进入投掷" if st.session_state.get("imported_from_screenshot") else "确认线索，拼出商品 →", type="primary", use_container_width=True)
-        skip_seller = st.button("跳过卖家信息，直接投掷") if st.session_state.get("imported_from_screenshot") else False
+        save_evidence = st.button("线索装进背包，去购物车 →", type="primary", use_container_width=True)
+        skip_seller = st.button("先跳过卖家信息，去购物车") if st.session_state.get("imported_from_screenshot") else False
         if save_evidence or skip_seller:
             if sample_preview["status"] == "invalid":
                 st.warning("请先修正同款二手参考价：输入 3 至 5 个正数，用逗号分隔。")
@@ -343,10 +392,10 @@ elif stage == 4:
     listing = st.session_state["confirmed_listing"]
     chat = st.session_state["confirmed_chat"]
     with st.container(border=True, key="step_evidence"):
-        st.markdown("### ✅ 第三站 · 商品线索已贴好")
+        st.markdown("### ✅ 第三站 · 小鸡把线索装进背包")
         price_caption = "价格待核实" if not price or price == "未标价" else f"标价 ¥{price}"
         st.caption(f"{price_caption} · {'商品描述已填写' if listing else '暂无商品描述，将列为待补信息'}")
-        if st.button("修改描述／补充卖家或比价截图", key="edit_evidence"):
+        if st.button("返回整理线索／补充截图", key="edit_evidence"):
             st.session_state.pop("review_result", None)
             st.session_state.pop("scene_token", None)
             st.session_state["journey_stage"] = 3
@@ -355,8 +404,8 @@ else:
     price, listing, chat = "", "", ""
 
 show_product_preview(category, model, platform, price, listing)
-st.progress((stage - 1) / 3, text="✨ 截图已导入，可投掷分析" if st.session_state.get("imported_from_screenshot") and stage == 4 else f"✨ 已确认 {stage - 1} / 3 站")
-submitted = stage == 4 and "scene_token" not in st.session_state and st.button("🛒 商品已成形，进入投掷场景", type="primary", use_container_width=True)
+st.progress((stage - 1) / 3, text="🐥 截图线索已带上，可以去购物车" if st.session_state.get("imported_from_screenshot") and stage == 4 else f"🐥 小鸡已走过 {stage - 1} / 3 站")
+submitted = stage == 4 and "scene_token" not in st.session_state and st.button("🛒 小鸡带着线索去购物车", type="primary", use_container_width=True)
 
 if submitted:
     current = {"platform": platform, "payment_channel": st.session_state.get("confirmed_payment_channel", "尚未确定"),
@@ -399,7 +448,7 @@ if stage == 4 and "review_result" in st.session_state:
     saved_case = st.session_state["review_case"]
     saved_result = st.session_state["review_result"]
     decision, reason = cart_gate(saved_result)
-    st.markdown(f"### 🧪 第 {st.session_state['review_round']} 轮核验")
+    st.markdown(f"### 🐥 小鸡的第 {st.session_state['review_round']} 轮核验")
     if st.session_state.get("decision_change"):
         st.info(st.session_state["decision_change"])
     if saved_result.get("material_changes"):
@@ -432,7 +481,7 @@ if stage == 4 and "review_result" in st.session_state:
                 st.text(f"{source_label(claim['source'])}：{claim['quote']} → {claim['claim']}")
     comparison = saved_result.get("price_comparison", {})
     with st.container(border=True):
-        st.markdown("### 💰 同款挂牌价参考")
+        st.markdown("### 💰 小鸡找到的同款挂牌价参考")
         st.write(comparison.get("summary", "没有可用的同款二手参考价，暂时无法判断价格是否接近市价。"))
         if comparison.get("status") == "compared":
             st.caption("参考的是你提供的挂牌价样本，实际成交价和机况可能不同；价格差异本身不能证明商品有问题。")
@@ -444,12 +493,12 @@ if stage == 4 and "review_result" in st.session_state:
     show_report_download(report_case, saved_result, current_progress, st.session_state.get("review_history", []))
 
     with st.container(border=True, key="seller_reply_stage"):
-        st.markdown("### 💌 补充回复或核验材料，更新判断")
+        st.markdown("### 💌 小鸡收到新回复？补充材料并更新判断")
         st.caption("可粘贴卖家回复，或上传聊天截图识别；先遮盖姓名、头像、电话、地址、账号和完整序列号。识别结果可修改，然后再分析。")
         new_reply = render_chat_input(f"reply_round_{st.session_state['review_round']}", "新回复或补充材料（请注明来源）")
         if st.button("🔁 根据补充材料重新分析", key="analyze_seller_reply", type="primary", use_container_width=True):
             if not new_reply.strip():
-                st.warning("先粘贴卖家的回复，或上传截图并点击‘识别截图中的对话’。")
+                st.warning("先粘贴卖家的回复，或上传截图并点击‘读取截图里的聊天线索’。")
             else:
                 updated_replies = [*st.session_state["seller_replies"], new_reply.strip()]
                 followup_case = {
