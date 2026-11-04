@@ -77,7 +77,7 @@ body{background:#f5ce87;color:#491c17}
 .chick-puppet{filter:drop-shadow(5px 5px 0 #4f6d4d55)}
 @media(max-width:720px){.shell{padding:12px}.scene:after{width:42px;height:42px}.floor{max-width:180px}.cartlabel{max-width:115px;text-align:center}.chick-puppet{left:42%}}
 </style></head>
-<body data-decision="__DECISION__"><div class="shell"><div class="top"><div><div class="eyebrow">叽有数 · 数码集市</div><div class="title">叽有数将这件装备投进购物车</div></div><div class="badge">拖动商品，或点击“投掷”</div></div>
+<body data-decision="__DECISION__"><div class="shell"><div class="top"><div><div class="eyebrow">叽有数——买不买心里有数</div><div class="title">叽有数将这件装备投进购物车</div></div><div class="badge">拖动商品，或点击“投掷”</div></div>
 <div class="scene" id="scene"><div class="cloud a"></div><div class="cloud b"></div><div class="spark">✦</div>
 <div class="product" id="product" tabindex="0" role="button" aria-label="拖动商品到购物车"><span class="ticket">__PRICE__</span>__ICON__<div class="device">__MODEL__</div><div class="meta">__CATEGORY__ · __PLATFORM__</div></div>
 <div class="trail">➜</div><div class="chick-puppet" id="chick" data-mood="expect" aria-hidden="true"></div><div class="cartzone" id="cartZone"><svg viewBox="0 0 300 230" aria-label="购物车图案" role="img"><defs><linearGradient id="cartGrad" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ba7a50"/><stop offset="1" stop-color="#f5ce87"/></linearGradient></defs><path d="M28 45h33l27 112h153l29-82H78" stroke="#643820" stroke-width="10" stroke-linejoin="round" fill="none" stroke-linecap="round"/><path d="M84 78h185l-28 79H102z" fill="url(#cartGrad)" opacity=".84"/><path d="M95 168h146" stroke="#643820" stroke-width="10" stroke-linecap="round"/><circle cx="117" cy="195" r="15" fill="#ba7a50"/><circle cx="220" cy="195" r="15" fill="#ba7a50"/></svg></div>
@@ -101,7 +101,7 @@ body{background:#f5ce87;color:#491c17}
    again.disabled=true;
    setChickMood('expect');
    product.style.transform='translate(90px,-50px) rotate(-15deg)';
-   setFeedback('正在核对提交的材料……','分析完成后，这里会显示投掷结果，下方会一起出现核验拼图。','wait');
+   setFeedback('正在核对提交的材料……','分析完成后，这里会显示投掷结果，下方会整理出线索手账。','wait');
    setTimeout(function(){window.parent.postMessage({type:'cart:toss',token:__TOKEN_JSON__},'*');},380);
    return;
   }

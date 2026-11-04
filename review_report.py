@@ -51,7 +51,7 @@ def build_report(case, review, progress, history=()):
             lines.append(f"引用{source_label(e.get('source',''))}：{e.get('quote','')}")
         if issue.get('question'):lines.append('建议动作：'+issue['question'])
     if progress.get('material_score'):
-        lines += ['', f"拼图资料评分：{progress['material_score']['score']:.1f} / 100（资料覆盖，不是安全分）"]
+        lines += ['', f"资料覆盖评分：{progress['material_score']['score']:.1f} / 100（资料覆盖，不是安全分）"]
     lines += ['', '四、核验完成度（用户记录，不是安全分）',
               f"完成度：{progress.get('score',0):.1f}%",
               '权重来自外部文献的探索性适配；维度内检查项等权属于项目设计，未经过本项目交易结果验证。']

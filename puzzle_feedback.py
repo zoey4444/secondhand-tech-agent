@@ -1,4 +1,4 @@
-"""Compact puzzle-style review with copyable seller questions."""
+"""Compact evidence journal with copyable seller questions."""
 
 import re
 from html import escape
@@ -186,7 +186,7 @@ def build_puzzle_html(analysis: str, evidence_notes: str, case: dict | None = No
     sections["填写信息的作用"] = feedback_text((review or {}).get("input_feedback") or build_input_feedback(case or {}, review or {}))
     rendered = []
     for title, subtitle in tiles:
-        body = sections.get(title, "这一项没有形成单独的分析内容，可结合其他拼图查看。")
+        body = sections.get(title, "这一项没有形成单独的分析内容，可结合手账中的其他记录查看。")
         if title == "建议向卖家核实" and questions:
             body = questions
         summary = card_summary(title, body, notes, case)
@@ -254,9 +254,20 @@ body{background:#f5ce87;color:#491c17}.pz-shell{background:#ffe0a1;border:4px so
 .pz-tile{border:3px solid #643820;border-radius:4px;color:#491c17;box-shadow:4px 4px 0 #ba7a50;background:#ffe0a1}.pz-known{background:#f5ce87}.pz-issues{background:#f9c49d}.pz-questions{background:#f5ce87}.pz-checklist{background:#e8e5cd}.pz-update{background:#e7eddc}
 .pz-sub,.pz-panel-kicker,.pz-panel-label{color:#5c7550}.pz-count{border-radius:3px;background:#ffe0a1;color:#491c17}.pz-count:hover,.pz-count-active{border-color:#7c955f;background:#eaf0d5}.pz-count small,.pz-priority{color:#643820}.pz-tile.pz-selected{outline-color:#638551}
 .pz-expand,.pz-close{border:2px solid #643820;border-radius:3px;background:#f8eed4;color:#491c17}.pz-copy{border:2px solid #4c725c;border-radius:3px;background:#4b7fcb;color:#491c17}.pz-panel{border:3px solid #643820;border-radius:4px;background:#ffe0a1}.pz-panel-summary{border-radius:3px;background:#e6ebd3}.pz-notice{border:2px solid #643820;border-radius:3px;background:#f2e9cb;color:#491c17}
-</style></head><body><div class="pz-shell"><div class="pz-head"><h2>商品核验拼图</h2><p>优先核实属于问题子集，不与分类数量相加。</p></div>
+/* A bound field journal: numbered paper tabs replace the puzzle metaphor. */
+.pz-shell{position:relative;padding-left:42px;background:#f8e8b9}
+.pz-shell:before{content:"";position:absolute;left:15px;top:76px;bottom:20px;width:11px;background:radial-gradient(circle at center,#643820 0 4px,transparent 5px) center top/11px 48px repeat-y;pointer-events:none}
+.pz-head{padding-bottom:13px;border-bottom:3px dashed #ba7a50;margin-bottom:25px}
+.pz-grid{gap:23px 14px}
+.pz-tile{position:relative;border-left:7px solid #4c725c;padding-top:28px;box-shadow:5px 5px 0 #ba7a50}
+.pz-tile:before{position:absolute;left:12px;top:-13px;min-width:92px;padding:3px 9px;border:2px solid #643820;border-radius:2px;background:#4c725c;color:#ffe0a1;box-shadow:2px 2px 0 #ba7a50;font-size:12px;font-weight:900;letter-spacing:.08em;line-height:1.2}
+.pz-known:before{content:"01 · 商品档案"}.pz-issues:before{content:"02 · 待核线索";background:#970138}.pz-questions:before{content:"03 · 卖家追问";background:#3a47a0}.pz-checklist:before{content:"04 · 验货清单"}.pz-update:before{content:"新回复 · 变化记录";background:#970138}
+.pz-checklist{padding-top:28px}.pz-update{padding-top:24px}
+.pz-panel{border-left:7px solid #4c725c}.pz-panel-kicker{letter-spacing:.08em}
+@media(max-width:650px){.pz-shell{padding-left:33px}.pz-shell:before{left:10px}.pz-head{margin-bottom:25px}.pz-grid{gap:23px}}
+</style></head><body><div class="pz-shell"><div class="pz-head"><h2>叽有数的线索手账</h2><p>优先核实属于问题子集，不与分类数量相加。</p></div>
 __ANALYSIS_NOTICE__<div class="pz-grid">__TILES__</div>
-<section class="pz-panel" id="detailPanel" hidden tabindex="-1"><div class="pz-panel-head"><div><div class="pz-panel-kicker">当前选中的拼图</div><h3 id="panelTitle"></h3></div><button class="pz-close" id="closePanel" type="button">收起 ↑</button></div><p class="pz-panel-summary" id="panelSummary"></p><div class="pz-panel-label" id="panelLabel">补充说明</div><div class="pz-panel-body" id="panelBody"></div></section>
+<section class="pz-panel" id="detailPanel" hidden tabindex="-1"><div class="pz-panel-head"><div><div class="pz-panel-kicker">当前翻开的记录</div><h3 id="panelTitle"></h3></div><button class="pz-close" id="closePanel" type="button">收起 ↑</button></div><p class="pz-panel-summary" id="panelSummary"></p><div class="pz-panel-label" id="panelLabel">补充说明</div><div class="pz-panel-body" id="panelBody"></div></section>
 __TIPS__
 <textarea id="sellerMessage" class="pz-hidden" aria-hidden="true">__COPY_TEXT__</textarea></div>
 <script>

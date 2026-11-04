@@ -20,7 +20,7 @@ class FlowTests(unittest.TestCase):
         def scene(*args):
             controller["decision"] = args[4]
             return {"action":"toss", "token":args[-1]} if controller["toss"] else None
-        result = dict(decision="wait", decision_reason="先补资料", analysis="## 🧩 缺失或矛盾\n型号未知",
+        result = dict(decision="wait", decision_reason="先补资料", analysis="## 🔎 缺失或矛盾\n型号未知",
                       issues=[], claims=[], questions=[], evidence_notes="")
         with patch.dict(os.environ, {"DEEPSEEK_API_KEY":"offline-test-placeholder"}), \
              patch("cart_scene.show_cart_scene", side_effect=scene), \

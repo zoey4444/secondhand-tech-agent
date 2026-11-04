@@ -71,7 +71,7 @@ def _show_manual_verification(case, review):
     import streamlit as st
     fingerprint = case_fingerprint(case)
     prefix = f'verify_{fingerprint}_'
-    st.markdown('### 🧩 五部分核验进度')
+    st.markdown('### 📒 五部分核验进度')
     st.caption('按你的核对记录计算，不是安全分。已有卖家陈述不会自动计为完成；完成度不改变上方模型判断。')
     store = st.session_state.setdefault('verification_records', {})
     saved = store.get(fingerprint, {})
@@ -159,11 +159,11 @@ def show_verification_progress(case, review):
     fingerprint=case_fingerprint(case)
     entries=st.session_state.get('verification_records',{}).get(fingerprint,{})
     # Render the form first so a save updates this run's score and report together.
-    with st.expander('拼图评分明细与核对记录（点击展开）',expanded=False):
+    with st.expander('资料覆盖评分明细与核对记录（点击展开）',expanded=False):
         result=_show_manual_verification(case,review)
     entries=st.session_state.get('verification_records',{}).get(fingerprint,{})
     score=material_score(case,entries)
-    st.metric('拼图资料评分', f"{score['score']:.1f} / 100")
+    st.metric('资料覆盖评分', f"{score['score']:.1f} / 100")
     st.caption('已提交的资料会自动计分；检测与售后等部分需保存核对依据。分数反映资料覆盖，不代表安全或真伪。')
     with st.expander('查看评分依据',expanded=False):
         st.caption('沿用文献参考权重；资料映射与维度内等权是本项目原型规则，未经实证校准。没有材料不猜测，发现问题仍可能有资料分。')

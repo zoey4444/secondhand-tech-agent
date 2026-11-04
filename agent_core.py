@@ -565,7 +565,7 @@ def compose_result(state: ReviewState) -> ReviewState:
         followup = "## 🔁 回复后的变化\n" + "\n".join(f"- {x['change']}：{x['summary']}" for x in changes) + "\n\n"
     input_feedback = build_input_feedback(case, state)
     analysis = (followup + "## 🔎 已知信息\n" + "\n".join(known) + "\n\n"
-                + "## 🧩 缺失或矛盾的证据\n" + "\n".join(gaps) + "\n\n"
+                + "## 🔎 缺失或矛盾的证据\n" + "\n".join(gaps) + "\n\n"
                 + "## 💬 建议向卖家核实\n" + "\n".join(questions) + "\n\n"
                 + f"## 🧰 {sources['category'] or '数码商品'}验货清单\n- {checklist}\n\n"
                 + f"## 💰 同款二手价格对比\n{price_comparison['summary']}\n\n"

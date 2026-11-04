@@ -438,7 +438,7 @@ if stage == 4 and "scene_token" in st.session_state:
     if (isinstance(event, dict) and event.get("action") == "toss" and event.get("token") == st.session_state["scene_token"]
             and not st.session_state.get("analysis_attempted")):
         st.session_state["analysis_attempted"] = True
-        with st.spinner("正在核对材料，结果与拼图马上一起呈现……"):
+        with st.spinner("叽有数正在核对材料，线索手账马上整理好……"):
             result = review_case(saved_case)
         st.session_state["review_history"].append(make_run_record(saved_case, result, os.getenv("DEEPSEEK_MODEL", "deepseek-flash")))
         if result.get("error"):
@@ -529,7 +529,7 @@ if stage == 4 and "review_result" in st.session_state:
                     new_decision, _ = cart_gate(followup_result)
                     labels = {"allow": "当前材料未见明显阻断项（不代表建议购买）", "reject": "先解决交易冲突或付款问题", "wait": "仍需补充或核对信息"}
                     if new_decision == old_decision:
-                        change = f"与上一轮相比，购物车判断仍是「{labels[new_decision]}」。请看‘回复后的变化’拼图，确认疑点是否真正解决。"
+                        change = f"与上一轮相比，购物车判断仍是「{labels[new_decision]}」。请看手账中的‘回复后的变化’，确认疑点是否真正解决。"
                     else:
                         change = f"购物车判断从「{labels[old_decision]}」变为「{labels[new_decision]}」。请核对下方依据；卖家陈述仍需凭证或实物支持。"
                     st.session_state["seller_replies"] = updated_replies
