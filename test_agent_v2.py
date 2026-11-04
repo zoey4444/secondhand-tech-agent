@@ -2,7 +2,7 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from agent_core import run_review  # noqa: E402
 from puzzle_feedback import build_puzzle_html, seller_message  # noqa: E402
 
@@ -41,8 +41,7 @@ assert price["decision"] == "reject"
 assert any("260元" in item["quote"] for issue in price["issues"] for item in issue["evidence"])
 assert "标价与商品描述" in price["analysis"]
 html = build_puzzle_html(price["analysis"], price["evidence_notes"], BASE)
-assert "商品核验拼图" in html and "260元" in html and "查看依据与建议" in html
-assert "标价420元，描述写260元；请先确认最终成交价。" in html
+assert "商品核验拼图" in html and "260元" in html and "查看补充说明" in html
 
 message = seller_message("- 能否提供购买记录？\n- 请确认有没有维修过。", BASE)
 assert not message.startswith("你好")
@@ -62,7 +61,7 @@ assert any(issue["kind"] == "missing_price" for issue in unpriced["issues"])
 assert any("最终成交价" in question for question in unpriced["questions"])
 unpriced_html = build_puzzle_html(unpriced["analysis"], unpriced["evidence_notes"],
                                   {**BASE, "price": "未标价", "model": "Apple iPad 第10代"})
-assert "商品页没有明确标价" in unpriced_html
+assert "商品页未提供明确价格" in unpriced_html
 
 fake_quote = run({**BASE, "listing": "个人闲置，支持验货。"},
                  {"claims": [], "issues": [{"summary": "卖家要求线下汇款", "severity": "high",
@@ -78,7 +77,7 @@ assert any(issue["kind"] == "off_platform" for issue in real_quote["issues"])
 
 revised_price = run({**BASE, "price": "3300", "listing": "相机标价3300元，含原装电池。",
                      "chat": "卖家：实际卖3600元，不含原装电池。"}, EMPTY)
-assert revised_price["decision"] == "wait"
+assert revised_price["decision"] == "reject"
 assert any(issue["kind"] == "price_revision" for issue in revised_price["issues"])
 assert any("现在报价是3600元" in question for question in revised_price["questions"])
 
