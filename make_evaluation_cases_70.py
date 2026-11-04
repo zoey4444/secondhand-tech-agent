@@ -96,6 +96,17 @@ ROWS = [
 ROWS = (ROWS[:10] + ROWS[12:20] + ROWS[22:30] + ROWS[32:37] + ROWS[38:44]
         + ROWS[45:52] + ROWS[53:59] + ROWS[60:66] + ROWS[67:73] + ROWS[74:82])
 assert len(ROWS) == 70, len(ROWS)
+HUMAN_LABELS = {
+    "N06": "wait", "N13": "reject", "N16": "reject", "N18": "wait",
+    "N23": "wait", "N26": "wait", "N29": "wait", "N30": "wait",
+    "N33": "wait", "N34": "wait", "N35": "wait", "N39": "wait",
+    "N45": "wait", "N52": "wait", "N56": "wait", "N63": "wait",
+    "N64": "wait", "N68": "wait",
+}
+ROWS = [
+    row[:7] + (HUMAN_LABELS.get(f"N{index:02d}", row[7]),) + row[8:]
+    for index, row in enumerate(ROWS, 1)
+]
 records = []
 for index, row in enumerate(ROWS, 1):
     scenario, category, model, price, listing, chat, channel, decision, focus, rationale = row
@@ -103,7 +114,8 @@ for index, row in enumerate(ROWS, 1):
     record = {
         "id": f"N{index:02d}",
         "source_type": "模拟；人工编写的测试场景，不含真实用户数据",
-        "label_status": "预期决策为草拟标签，待人工复核；不是金标准",
+        "label_status": ("用户人工复核" if f"N{index:02d}" in HUMAN_LABELS
+                         else "预期决策为草拟标签，待人工复核；不是金标准"),
         "scenario": scenario,
         "expected_focus": focus,
         "must_find": terms,
@@ -117,7 +129,8 @@ for index, row in enumerate(ROWS, 1):
             "chat": chat,
         },
         "expected_decision": decision,
-        "decision_rationale": rationale,
+        "decision_rationale": (f"用户人工复核标签为 {decision}；未另附理由。"
+                                if f"N{index:02d}" in HUMAN_LABELS else rationale),
     }
     records.append(record)
 
